@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0d1c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/favicon.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+</script>
+<title>PRISMA: Дуэль — онлайн</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg0:#0a0d1c; --bg1:#131a33;
+    --glass:rgba(255,255,255,.05); --glass-br:rgba(255,255,255,.10);
+    --ink:#eef1ff; --ink-dim:#8b93b8;
+    --p1:#4de1ff; --p2:#ff5ca8; --gold:#ffc24d;
+    --cell:96px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+  body{
+    font-family:'Outfit',sans-serif;color:var(--ink);
+    background:radial-gradient(120% 90% at 50% 0%,var(--bg1) 0%,var(--bg0) 70%);
+    display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+    touch-action:manipulation;user-select:none;-webkit-user-select:none;
+  }
+  .amb{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+  .amb i{position:absolute;width:10px;height:10px;opacity:.12;
+    clip-path:polygon(50% 0,100% 38%,82% 100%,18% 100%,0 38%);
+    animation:drift 26s linear infinite}
+  @keyframes drift{from{transform:translateY(110vh) rotate(0)}to{transform:translateY(-12vh) rotate(340deg)}}
+  @media (prefers-reduced-motion:reduce){.amb i{display:none}}
+
+  header{width:100%;max-width:430px;padding:12px 18px 4px;display:flex;align-items:center;justify-content:space-between;z-index:2}
+  .logo{font-family:'Unbounded';font-weight:800;font-size:17px;letter-spacing:.12em;
+    background:linear-gradient(100deg,var(--p1),#9d7bff 55%,var(--p2));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .logo small{display:block;font-family:'Outfit';font-weight:300;font-size:9px;letter-spacing:.4em;color:var(--ink-dim);-webkit-text-fill-color:var(--ink-dim);margin-top:1px}
+  .series{display:flex;gap:8px;align-items:center;font-family:'Unbounded';font-size:14px}
+  .series b{padding:4px 10px;border-radius:10px;background:var(--glass);border:1px solid var(--glass-br)}
+  .series .s1{color:var(--p1)} .series .s2{color:var(--p2)}
+  .series span{color:var(--ink-dim);font-size:10px}
+
+  .tray{z-index:2;width:100%;max-width:430px;display:flex;align-items:center;justify-content:center;gap:12px;
+    padding:8px 14px;min-height:78px}
+  .tray .who{font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-dim);
+    writing-mode:vertical-rl;transform:rotate(180deg);opacity:.8}
+  .tray.turn .who{color:var(--ink)}
+  .stock{display:flex;gap:7px;align-items:center;padding:8px 14px;border-radius:16px;
+    background:var(--glass);border:1px solid var(--glass-br);transition:box-shadow .25s,border-color .25s}
+  .tray.turn .stock{border-color:currentColor}
+  .tray.p1{color:var(--p1)} .tray.p2{color:var(--p2)}
+  .tray.turn.p1 .stock{box-shadow:0 0 18px rgba(77,225,255,.25)}
+  .tray.turn.p2 .stock{box-shadow:0 0 18px rgba(255,92,168,.25)}
+  .slot{position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer;
+    width:46px;height:46px;border-radius:12px;transition:background .15s}
+  .slot .cnt{position:absolute;right:2px;bottom:0;font-size:10px;font-weight:600;color:var(--ink-dim)}
+  .slot.empty{opacity:.2;pointer-events:none}
+  .slot.sel{background:rgba(255,255,255,.12)}
+  .slot.sel .gem{animation:bounce .5s infinite alternate}
+  @keyframes bounce{to{transform:translateY(-4px)}}
+
+  .gem{position:relative;border-radius:18%;
+    clip-path:polygon(30% 0,70% 0,100% 30%,100% 70%,70% 100%,30% 100%,0 70%,0 30%)}
+  .gem::after{content:'';position:absolute;left:14%;top:8%;width:34%;height:26%;
+    background:linear-gradient(180deg,rgba(255,255,255,.85),rgba(255,255,255,0));
+    clip-path:polygon(0 0,100% 0,70% 100%,10% 80%);opacity:.55}
+  .gp1{background:linear-gradient(145deg,#aef2ff,var(--p1) 45%,#0f7ea3);box-shadow:0 0 12px rgba(77,225,255,.4)}
+  .gp2{background:linear-gradient(145deg,#ffc4de,var(--p2) 45%,#a1235f);box-shadow:0 0 12px rgba(255,92,168,.4)}
+  .sz0{width:14px;height:14px} .sz1{width:21px;height:21px} .sz2{width:28px;height:28px}
+  .sz3{width:35px;height:35px} .sz4{width:42px;height:42px}
+
+  #board{position:relative;z-index:2;display:grid;grid-template:repeat(3,var(--cell))/repeat(3,var(--cell));gap:8px;
+    padding:12px;border-radius:24px;background:var(--glass);border:1px solid var(--glass-br);
+    box-shadow:0 20px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06)}
+  .cell{border-radius:14px;background:rgba(255,255,255,.035);position:relative;
+    display:flex;align-items:center;justify-content:center;transition:background .15s,box-shadow .15s}
+  .cell.legal{background:rgba(255,255,255,.10);box-shadow:inset 0 0 0 1px rgba(255,255,255,.3);cursor:pointer}
+  .cell.legal::before{content:'';position:absolute;width:10px;height:10px;border-radius:50%;
+    background:rgba(255,255,255,.35);animation:pulse 1s infinite}
+  @keyframes pulse{50%{transform:scale(1.6);opacity:.3}}
+  .cell .gem.c0{width:24%;height:24%} .cell .gem.c1{width:38%;height:38%} .cell .gem.c2{width:52%;height:52%}
+  .cell .gem.c3{width:66%;height:66%} .cell .gem.c4{width:80%;height:80%}
+  .cell .gem.born{animation:born .22s cubic-bezier(.2,1.4,.4,1)}
+  @keyframes born{from{transform:scale(.3)}to{transform:scale(1)}}
+  .cell.win .gem{animation:winGlow .6s infinite alternate}
+  @keyframes winGlow{to{filter:brightness(1.9);transform:scale(1.08)}}
+  .buried{position:absolute;bottom:5px;left:0;right:0;display:flex;gap:3px;justify-content:center}
+  .buried i{width:5px;height:5px;border-radius:50%;opacity:.7}
+  .buried .b1{background:var(--p1)} .buried .b2{background:var(--p2)}
+
+  .status{z-index:2;height:26px;font-family:'Unbounded';font-size:11.5px;letter-spacing:.14em;
+    color:var(--ink-dim);display:flex;align-items:center;gap:8px;text-transform:uppercase}
+  .status .dot{width:10px;height:10px;border-radius:3px;
+    clip-path:polygon(30% 0,70% 0,100% 30%,100% 70%,70% 100%,30% 100%,0 70%,0 30%)}
+  .status.t1 .dot{background:var(--p1)} .status.t2 .dot{background:var(--p2)}
+  .status.think{animation:blink 1s infinite}
+  @keyframes blink{50%{opacity:.45}}
+
+  .shard{position:fixed;width:7px;height:7px;z-index:50;pointer-events:none;
+    clip-path:polygon(50% 0,100% 38%,82% 100%,18% 100%,0 38%)}
+
+  footer{z-index:2;padding:8px 0 14px;display:flex;gap:14px}
+  footer button{background:var(--glass);border:1px solid var(--glass-br);border-radius:12px;
+    color:var(--ink-dim);font-family:'Outfit';font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    padding:9px 14px;cursor:pointer}
+  footer button.gold{color:var(--gold)}
+
+  .overlay{position:fixed;inset:0;background:rgba(6,8,18,.72);backdrop-filter:blur(8px);
+    display:none;align-items:center;justify-content:center;z-index:100;padding:24px}
+  .overlay.on{display:flex}
+  .modal{background:linear-gradient(170deg,#1a2140,#10142a);border:1px solid var(--glass-br);
+    border-radius:24px;padding:26px 24px;max-width:340px;width:100%;text-align:center;
+    box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  .modal h2{font-family:'Unbounded';font-weight:600;font-size:16px;letter-spacing:.08em;margin-bottom:8px}
+  .modal p{color:var(--ink-dim);font-size:13.5px;line-height:1.55;margin-bottom:16px}
+  .btn{display:block;width:100%;border:0;border-radius:14px;padding:13px;margin-top:10px;cursor:pointer;
+    font-family:'Outfit';font-size:14px;font-weight:600;color:#0a0d1c;
+    background:linear-gradient(100deg,var(--p1),#9d7bff);transition:transform .1s}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:var(--glass);border:1px solid var(--glass-br);color:var(--ink)}
+  .btn.gold{background:linear-gradient(100deg,#ffd97a,var(--gold))}
+  .diff{display:flex;gap:8px;margin-top:10px}
+  .diff button{flex:1;border:1px solid var(--glass-br);background:var(--glass);color:var(--ink);
+    border-radius:12px;padding:11px 4px;font-family:'Outfit';font-size:12.5px;font-weight:500;cursor:pointer}
+  .diff button.on{border-color:var(--p1);box-shadow:0 0 12px rgba(77,225,255,.3)}
+  .winner-name{font-family:'Unbounded';font-size:24px;font-weight:800;margin:6px 0 4px}
+  .adbar{height:6px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden;margin:14px 0 4px}
+  .adbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--p2))}
+  .shop-item{display:flex;justify-content:space-between;align-items:center;text-align:left;
+    background:var(--glass);border:1px solid var(--glass-br);border-radius:14px;padding:12px 14px;margin-top:9px}
+  .shop-item b{font-size:13.5px;display:block}
+  .shop-item span{font-size:11px;color:var(--ink-dim)}
+  .shop-item .price{font-family:'Unbounded';font-size:12px;color:var(--gold);white-space:nowrap;margin-left:10px}
+  .rules-list{text-align:left;font-size:13.5px;color:var(--ink-dim);line-height:1.6;margin-bottom:16px}
+  .rules-list b{color:var(--ink)}
+  .room-code{font-family:'Unbounded';font-size:38px;font-weight:800;letter-spacing:.28em;margin:8px 0 2px;
+    background:linear-gradient(100deg,var(--p1),var(--p2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .code-input{width:100%;background:rgba(255,255,255,.06);border:1px solid var(--glass-br);border-radius:14px;
+    color:var(--ink);font-family:'Unbounded';font-size:24px;letter-spacing:.3em;text-align:center;
+    padding:14px 6px;margin-top:6px;text-transform:uppercase;outline:none}
+  .code-input:focus{border-color:var(--p1)}
+  .waiting-dots::after{content:'';animation:dots 1.5s infinite}
+  @keyframes dots{0%{content:''}33%{content:'.'}66%{content:'..'}100%{content:'...'}}
+  .top-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:12px;
+    background:var(--glass);border:1px solid var(--glass-br);margin-top:7px;font-size:13.5px}
+  .top-row .pos{font-family:'Unbounded';font-size:11px;color:var(--ink-dim);width:24px}
+  .top-row .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .top-row .rt{font-family:'Unbounded';font-size:12px;color:var(--gold)}
+  .top-row.me{border-color:var(--p1);box-shadow:0 0 10px rgba(77,225,255,.2)}
+  .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);z-index:110;
+    background:rgba(20,26,50,.92);border:1px solid var(--glass-br);border-radius:12px;
+    padding:9px 16px;font-size:12.5px;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
+  .toast.on{opacity:1}
+  @media (max-height:760px){:root{--cell:84px}}
+  @media (max-height:680px){:root{--cell:74px} .tray{min-height:66px}}
+</style>
+</head>
+<body>
+<div class="amb" id="amb"></div>
+
+<header>
+  <div class="logo">PRISMA: ДУЭЛЬ<small>онлайн-версия</small></div>
+  <div class="series"><b class="s1" id="w1">0</b><span>серия</span><b class="s2" id="w2">0</b></div>
+</header>
+
+<div class="tray p2" id="tray2"><div class="who" id="name2">Соперник</div><div class="stock" id="stock2"></div></div>
+
+<div class="status t1" id="status"><span class="dot"></span><span id="statusText">Ваш ход</span></div>
+<div id="board"></div>
+
+<div class="tray p1 turn" id="tray1"><div class="who" id="name1">Вы</div><div class="stock" id="stock1"></div></div>
+
+<footer>
+  <button id="menuBtn">Меню</button>
+  <button id="rulesBtn">Правила</button>
+  <button class="gold" id="hintBtn">▶ Подсказка</button>
+  <button class="gold" id="shopBtn">◆ Магазин</button>
+</footer>
+
+<!-- menu -->
+<div class="overlay on" id="menuOverlay">
+  <div class="modal">
+    <h2>PRISMA: Дуэль</h2>
+    <p>Крестики-нолики нового поколения: крупные кристаллы поглощают мелкие.</p>
+    <button class="btn" id="vsAiBtn">Против компьютера</button>
+    <div class="diff" id="diffRow">
+      <button data-d="0">Новичок</button>
+      <button data-d="1" class="on">Мастер</button>
+      <button data-d="2">Гроссмейстер</button>
+    </div>
+    <button class="btn ghost" id="vsHumanBtn">Вдвоём на одном устройстве</button>
+    <button class="btn gold" id="findMatchBtn">⚔ Найти соперника · рейтинг</button>
+    <button class="btn ghost" id="createRoomBtn">С другом: создать комнату</button>
+    <button class="btn ghost" id="joinRoomBtn">С другом: войти по коду</button>
+    <button class="btn ghost" id="topBtn">🏆 Топ игроков</button>
+    <p id="menuSub" style="margin:12px 0 0;font-size:12px;color:var(--ink-dim)"></p>
+  </div>
+</div>
+
+<!-- waiting room -->
+<div class="overlay" id="waitOverlay">
+  <div class="modal">
+    <h2>Комната создана</h2>
+    <p style="margin-bottom:2px">Продиктуйте или отправьте код сопернику:</p>
+    <div class="room-code" id="roomCodeView">····</div>
+    <p class="waiting-dots" id="waitText">Ждём соперника</p>
+    <button class="btn ghost" id="copyCodeBtn">Скопировать код</button>
+    <button class="btn ghost" id="cancelRoomBtn">Отменить</button>
+  </div>
+</div>
+
+<!-- join room -->
+<div class="overlay" id="joinOverlay">
+  <div class="modal">
+    <h2>Вход по коду</h2>
+    <p style="margin-bottom:0">Введите 4 буквы кода комнаты</p>
+    <input class="code-input" id="codeInput" maxlength="4" autocomplete="off" placeholder="XXXX">
+    <button class="btn" id="joinGoBtn">Подключиться</button>
+    <button class="btn ghost" id="joinCancelBtn">Назад</button>
+  </div>
+</div>
+
+<!-- поиск соперника -->
+<div class="overlay" id="searchOverlay">
+  <div class="modal">
+    <h2>Поиск соперника</h2>
+    <p class="waiting-dots" id="searchText">Ищем достойного противника</p>
+    <p id="searchSub" style="font-size:11.5px;margin-top:-10px"></p>
+    <button class="btn ghost" id="cancelSearchBtn">Отменить</button>
+  </div>
+</div>
+
+<!-- ник -->
+<div class="overlay" id="nickOverlay">
+  <div class="modal">
+    <h2>Ваш ник</h2>
+    <p>Под этим именем вас увидят соперники и таблица лидеров.</p>
+    <input class="code-input" id="nickInput" maxlength="14" autocomplete="off"
+           style="letter-spacing:.05em;font-size:18px;text-transform:none" placeholder="Игрок">
+    <button class="btn" id="nickGoBtn">Сохранить и искать</button>
+    <button class="btn ghost" id="nickCancelBtn">Назад</button>
+  </div>
+</div>
+
+<!-- топ игроков -->
+<div class="overlay" id="topOverlay">
+  <div class="modal">
+    <h2>🏆 Топ игроков</h2>
+    <div id="topList" style="text-align:left;max-height:52vh;overflow:auto;margin-bottom:6px"></div>
+    <button class="btn ghost" id="topClose">Закрыть</button>
+  </div>
+</div>
+
+<!-- round end -->
+<div class="overlay" id="endOverlay">
+  <div class="modal">
+    <h2 id="endTitle">Раунд окончен</h2>
+    <div class="winner-name" id="endWinner"></div>
+    <p id="endNote"></p>
+    <p id="ratingDelta" style="font-family:'Unbounded';font-size:13px;margin:-6px 0 10px"></p>
+    <button class="btn" id="rematchBtn">Реванш</button>
+    <button class="btn ghost" id="toMenuBtn">В меню</button>
+  </div>
+</div>
+
+<!-- rules -->
+<div class="overlay" id="rulesOverlay">
+  <div class="modal">
+    <h2>Правила дуэли</h2>
+    <div class="rules-list">
+      У каждого — <b>10 кристаллов</b>: пять размеров, по два каждого.<br><br>
+      Выберите кристалл в своём ряду и поставьте на любую клетку. <b>Крупный кристалл можно поставить поверх более мелкого</b> — даже чужого, поглотив его.<br><br>
+      Побеждает тот, чьи <b>три кристалла видны в ряд</b>.<br><br>
+      Точки под кристаллом — «погребённые». Самых больших — всего два: тратьте с умом!
+    </div>
+    <button class="btn" id="rulesClose">В бой</button>
+  </div>
+</div>
+
+<!-- fake rewarded ad -->
+<div class="overlay" id="adOverlay">
+  <div class="modal">
+    <h2>Реклама</h2>
+    <p>Здесь будет rewarded-ролик (AdMob / Unity Ads). В прототипе — имитация.</p>
+    <div class="adbar"><i id="adBar"></i></div>
+    <p id="adTimer" style="margin:0;font-size:12px">3</p>
+  </div>
+</div>
+
+<!-- shop -->
+<div class="overlay" id="shopOverlay">
+  <div class="modal">
+    <h2>Магазин</h2>
+    <p style="margin-bottom:4px">Витрина будущих покупок — платежи в прототипе отключены.</p>
+    <div class="shop-item"><div><b>Убрать рекламу навсегда</b><span>Играйте без пауз</span></div><div class="price">$2.99</div></div>
+    <div class="shop-item"><div><b>Prisma+ подписка</b><span>Без рекламы · безлимит подсказок · темы</span></div><div class="price">$4.99/мес</div></div>
+    <div class="shop-item"><div><b>Тема «Аврора»</b><span>Изумруд и северное сияние</span></div><div class="price">$1.99</div></div>
+    <div class="shop-item"><div><b>Онлайн-сезон</b><span>Рейтинг, лиги, награды</span></div><div class="price">скоро</div></div>
+    <button class="btn ghost" id="shopClose">Закрыть</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+<script>
+/* =====================================================================
+   ШАГ 1. Вставьте сюда конфигурацию вашего проекта Firebase.
+   Где взять: console.firebase.google.com → ваш проект → ⚙ Project settings
+   → Your apps → </> (Web) → блок firebaseConfig.
+   ВАЖНО: databaseURL появляется после создания Realtime Database
+   (Build → Realtime Database → Create Database, регион europe-west1).
+   ===================================================================== */
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyAVcuoWKDtqNXKZsXv7TNGmeLpPaJ7MP2M",
+  authDomain:        "prisma-12f92.firebaseapp.com",
+  databaseURL:       "https://prisma-12f92-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:         "prisma-12f92",
+  storageBucket:     "prisma-12f92.firebasestorage.app",
+  messagingSenderId: "799108061201",
+  appId:             "1:799108061201:web:9aaf548528f3d1029ab9b0"
+};
+/* ===================================================================== */
+
+(() => {
+/* ---------- state ---------- */
+let stacks, reserve;
+let turn=0, selected=null;
+let vsAI=true, aiLevel=1, over=false, wins=[0,0], thinking=false;
+let online=false, mySeat=0, roomCode=null, roomRef=null, myId='u'+Math.random().toString(36).slice(2,10);
+let suppressWrite=false, roundId=0;
+
+/* ---------- личность игрока и рейтинг ---------- */
+let store;
+try{localStorage.setItem('_t','1');localStorage.removeItem('_t');store=localStorage;}
+catch(e){const m={};store={getItem:k=>m[k]??null,setItem:(k,v)=>m[k]=String(v),removeItem:k=>delete m[k]};}
+let uid=store.getItem('prisma_uid');
+if(!uid){uid='p'+Math.random().toString(36).slice(2,12);store.setItem('prisma_uid',uid);}
+let nick=store.getItem('prisma_nick')||'';
+let myRating=parseInt(store.getItem('prisma_rating')||'1000',10);
+let ranked=false, matchStartRatings=null, oppInfo=null, ratingApplied=false;
+let searching=false, queueRef=null, pollTimer=null;
+const LINES=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+const $=id=>document.getElementById(id);
+const boardEl=$('board');
+
+/* ---------- firebase ---------- */
+let db=null, fbReady=false;
+function initFirebase(){
+  if(fbReady)return true;
+  if(FIREBASE_CONFIG.apiKey.startsWith('ВСТАВЬТЕ')){
+    toast('Сначала вставьте ключи Firebase в код (см. комментарий ШАГ 1)');
+    return false;
+  }
+  try{
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db=firebase.database();
+    fbReady=true;
+    return true;
+  }catch(e){toast('Ошибка Firebase: '+e.message);return false;}
+}
+
+/* ---------- ambient ---------- */
+const ambCols=['#4de1ff','#ff5ca8','#ffc24d','#9d7bff'];
+for(let i=0;i<14;i++){const s=document.createElement('i');
+  s.style.left=Math.random()*100+'vw';s.style.background=ambCols[i%4];
+  s.style.animationDuration=(18+Math.random()*22)+'s';
+  s.style.animationDelay=(-Math.random()*30)+'s';
+  s.style.transform='scale('+(0.6+Math.random()*1.6)+')';
+  $('amb').appendChild(s);}
+
+/* ---------- board ---------- */
+for(let i=0;i<9;i++){
+  const d=document.createElement('div');d.className='cell';d.dataset.i=i;
+  d.addEventListener('click',()=>onCell(i));
+  boardEl.appendChild(d);
+}
+function top(i){const s=stacks[i];return s.length?s[s.length-1]:null;}
+
+function render(){
+  for(let i=0;i<9;i++){
+    const cell=boardEl.children[i];cell.innerHTML='';
+    const t=top(i);
+    if(t){
+      const g=document.createElement('div');
+      g.className=`gem gp${t.p+1} c${t.s} born`;
+      cell.appendChild(g);
+    }
+    if(stacks[i].length>1){
+      const b=document.createElement('div');b.className='buried';
+      stacks[i].slice(0,-1).forEach(x=>{
+        const d=document.createElement('i');d.className='b'+(x.p+1);b.appendChild(d);
+      });
+      cell.appendChild(b);
+    }
+  }
+  [0,1].forEach(p=>{
+    const st=$('stock'+(p+1));st.innerHTML='';
+    for(let s=4;s>=0;s--){
+      const slot=document.createElement('div');
+      slot.className='slot'+(reserve[p][s]===0?' empty':'')+(turn===p&&selected===s&&!over&&canAct(p)?' sel':'');
+      const g=document.createElement('div');g.className=`gem gp${p+1} sz${s}`;
+      slot.appendChild(g);
+      const c=document.createElement('span');c.className='cnt';c.textContent='×'+reserve[p][s];
+      slot.appendChild(c);
+      slot.addEventListener('click',()=>onSlot(p,s));
+      st.appendChild(slot);
+    }
+  });
+  $('tray1').classList.toggle('turn',turn===0&&!over);
+  $('tray2').classList.toggle('turn',turn===1&&!over);
+  boardEl.querySelectorAll('.cell').forEach((c,i)=>{
+    c.classList.toggle('legal',!over&&selected!==null&&canAct(turn)&&legal(i,selected));
+  });
+  const st=$('status');st.className='status t'+(turn+1)+(thinking?' think':'');
+  $('statusText').textContent = over ? 'Игра окончена'
+    : thinking ? 'Компьютер думает…'
+    : online ? (turn===mySeat?'Ваш ход':'Ход соперника')
+    : vsAI ? (turn===0?'Ваш ход':'Ход компьютера')
+    : (turn===0?'Ход синих':'Ход розовых');
+}
+function canAct(p){
+  if(over)return false;
+  if(online)return p===mySeat;
+  if(vsAI)return p===0;
+  return true;
+}
+function legal(i,s){const t=top(i);return !t || t.s<s;}
+
+/* ---------- interaction ---------- */
+function onSlot(p,s){
+  if(p!==turn||!canAct(p)||reserve[p][s]===0)return;
+  selected=(selected===s?null:s);
+  render();
+}
+function onCell(i){
+  if(!canAct(turn)||selected===null)return;
+  if(!legal(i,selected)){toast('Сюда нельзя — кристалл слишком мал');return;}
+  makeMove(i,selected);
+}
+function makeMove(i,s){
+  const t=top(i);
+  if(t)spawnShards(i,t.p);
+  stacks[i].push({p:turn,s});
+  reserve[turn][s]--;
+  selected=null;
+  const winLine=checkWin();
+  if(winLine){finish(winLine);pushState(winLine);return;}
+  turn=1-turn;
+  if(!hasMoves(turn)){
+    if(!hasMoves(1-turn)){finish(null);pushState(null,true);return;}
+    toast((turn===0?'Синим':'Розовым')+' некуда ходить — пропуск');
+    turn=1-turn;
+  }
+  render();
+  pushState(null);
+  if(vsAI&&turn===1&&!over)aiTurn();
+}
+function hasMoves(p){
+  for(let s=0;s<5;s++){if(!reserve[p][s])continue;
+    for(let i=0;i<9;i++)if(legal(i,s))return true;}
+  return false;
+}
+function checkWin(){
+  for(const L of LINES){
+    const t0=top(L[0]),t1=top(L[1]),t2=top(L[2]);
+    if(t0&&t1&&t2&&t0.p===t1.p&&t1.p===t2.p)return {line:L,p:t0.p};
+  }
+  return null;
+}
+function finish(win){
+  over=true;selected=null;thinking=false;
+  if(win){
+    win.line.forEach(i=>boardEl.children[i].classList.add('win'));
+    wins[win.p]++;$('w1').textContent=wins[0];$('w2').textContent=wins[1];
+    win.line.forEach(i=>spawnShards(i,win.p));
+    let name;
+    if(online)name = win.p===mySeat ? 'Вы победили!' : 'Соперник победил';
+    else if(vsAI)name = win.p===0?'Вы победили!':'Компьютер победил';
+    else name = win.p===0?'Синие победили!':'Розовые победили!';
+    $('endWinner').textContent=name;
+    $('endWinner').style.color=win.p===0?'var(--p1)':'var(--p2)';
+    $('endNote').textContent='Счёт серии '+wins[0]+' : '+wins[1];
+  } else {
+    $('endWinner').textContent='Ничья';
+    $('endWinner').style.color='var(--ink-dim)';
+    $('endNote').textContent='Кристаллы закончились. Счёт серии '+wins[0]+' : '+wins[1];
+  }
+  applyRanked(win?win.p:null);
+  $('rematchBtn').textContent=(online&&ranked)?'Найти нового соперника':'Реванш';
+  render();
+  setTimeout(()=>$('endOverlay').classList.add('on'),900);
+}
+
+/* ---------- effects ---------- */
+function spawnShards(i,p){
+  const rect=boardEl.children[i].getBoundingClientRect();
+  const col=p===0?'#4de1ff':'#ff5ca8';
+  for(let k=0;k<6;k++){
+    const s=document.createElement('div');s.className='shard';s.style.background=col;
+    s.style.left=rect.left+rect.width/2+'px';s.style.top=rect.top+rect.height/2+'px';
+    document.body.appendChild(s);
+    const ang=Math.random()*Math.PI*2,d=26+Math.random()*44;
+    s.animate([{transform:'translate(0,0)',opacity:1},
+      {transform:`translate(${Math.cos(ang)*d}px,${Math.sin(ang)*d}px) rotate(${Math.random()*300}deg)`,opacity:0}],
+      {duration:420+Math.random()*180,easing:'cubic-bezier(.2,.7,.3,1)'}).onfinish=()=>s.remove();
+  }
+}
+const toast=(m)=>{const t=$('toast');t.textContent=m;t.classList.add('on');
+  clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('on'),2200);};
+
+/* ---------- AI ---------- */
+function cloneState(){return {st:stacks.map(x=>x.slice()),rs:[reserve[0].slice(),reserve[1].slice()]};}
+function movesOf(S,p){
+  const out=[];
+  for(let s=4;s>=0;s--){if(!S.rs[p][s])continue;
+    for(let i=0;i<9;i++){const t=S.st[i].length?S.st[i][S.st[i].length-1]:null;
+      if(!t||t.s<s)out.push({i,s});}}
+  return out;
+}
+function winOf(S){
+  for(const L of LINES){
+    const g=L.map(i=>S.st[i].length?S.st[i][S.st[i].length-1]:null);
+    if(g[0]&&g[1]&&g[2]&&g[0].p===g[1].p&&g[1].p===g[2].p)return g[0].p;
+  }
+  return -1;
+}
+function evalS(S){
+  let sc=0;
+  for(const L of LINES){
+    const g=L.map(i=>S.st[i].length?S.st[i][S.st[i].length-1]:null);
+    let me=0,en=0;
+    g.forEach(t=>{if(!t)return;t.p===1?me++:en++;});
+    if(me&&en)continue;
+    if(me)sc+=[0,4,28,10000][me];
+    if(en)sc-=[0,4,28,10000][en];
+  }
+  const W=[0,1,2,4,6];for(let s=0;s<5;s++)sc+=W[s]*(S.rs[1][s]-S.rs[0][s]);
+  return sc;
+}
+function minimax(S,depth,p,a,b){
+  const w=winOf(S);
+  if(w===1)return 10000+depth;
+  if(w===0)return -10000-depth;
+  if(depth===0)return evalS(S);
+  const mv=movesOf(S,p);
+  if(!mv.length){
+    const other=movesOf(S,1-p);
+    if(!other.length)return 0;
+    return minimax(S,depth-1,1-p,a,b);
+  }
+  if(p===1){let best=-1e9;
+    for(const m of mv){
+      S.st[m.i].push({p:1,s:m.s});S.rs[1][m.s]--;
+      best=Math.max(best,minimax(S,depth-1,0,a,b));
+      S.st[m.i].pop();S.rs[1][m.s]++;
+      a=Math.max(a,best);if(b<=a)break;
+    }return best;
+  } else {let best=1e9;
+    for(const m of mv){
+      S.st[m.i].push({p:0,s:m.s});S.rs[0][m.s]--;
+      best=Math.min(best,minimax(S,depth-1,1,a,b));
+      S.st[m.i].pop();S.rs[0][m.s]++;
+      b=Math.min(b,best);if(b<=a)break;
+    }return best;
+  }
+}
+function bestMove(forPlayer,depth){
+  const S=cloneState();
+  const mv=movesOf(S,forPlayer);
+  if(!mv.length)return null;
+  let best=[],bestV=forPlayer===1?-1e9:1e9;
+  for(const m of mv){
+    S.st[m.i].push({p:forPlayer,s:m.s});S.rs[forPlayer][m.s]--;
+    const v=minimax(S,depth,1-forPlayer,-1e9,1e9);
+    S.st[m.i].pop();S.rs[forPlayer][m.s]++;
+    const better=forPlayer===1? v>bestV : v<bestV;
+    if(better){bestV=v;best=[m];}
+    else if(v===bestV)best.push(m);
+  }
+  return best[Math.random()*best.length|0];
+}
+function aiTurn(){
+  thinking=true;render();
+  setTimeout(()=>{
+    let m;
+    const mv=movesOf(cloneState(),1);
+    if(aiLevel===0){m=Math.random()<0.6? mv[Math.random()*mv.length|0] : bestMove(1,1);}
+    else if(aiLevel===1){m=bestMove(1,2);}
+    else {m=bestMove(1,3);}
+    thinking=false;
+    if(m)makeMove(m.i,m.s); else {turn=0;render();}
+  },650+Math.random()*500);
+}
+
+/* ---------- ONLINE: комнаты и синхронизация ---------- */
+function serialize(winInfo,draw){
+  return {
+    stacks:JSON.stringify(stacks),
+    reserve:JSON.stringify(reserve),
+    turn, wins:JSON.stringify(wins),
+    over, roundId,
+    win: winInfo?{line:winInfo.line,p:winInfo.p}:null,
+    draw: !!draw,
+    by: myId, ts: Date.now()
+  };
+}
+function pushState(winInfo,draw){
+  if(!online||!roomRef||suppressWrite)return;
+  roomRef.child('state').set(serialize(winInfo,draw));
+}
+function applyState(s){
+  if(!s)return;
+  suppressWrite=true;
+  const newRound = s.roundId!==roundId;
+  stacks=JSON.parse(s.stacks);
+  reserve=JSON.parse(s.reserve);
+  wins=JSON.parse(s.wins);
+  turn=s.turn; roundId=s.roundId;
+  $('w1').textContent=wins[0];$('w2').textContent=wins[1];
+  if(newRound){
+    over=false;selected=null;
+    boardEl.querySelectorAll('.cell').forEach(c=>c.classList.remove('win'));
+    $('endOverlay').classList.remove('on');
+    render();
+  } else if(s.over&&!over){
+    // соперник завершил партию — воспроизводим финал без повторного инкремента побед
+    over=true;
+    if(s.win){
+      s.win.line.forEach(i=>boardEl.children[i].classList.add('win'));
+      s.win.line.forEach(i=>spawnShards(i,s.win.p));
+      $('endWinner').textContent = s.win.p===mySeat?'Вы победили!':'Соперник победил';
+      $('endWinner').style.color=s.win.p===0?'var(--p1)':'var(--p2)';
+    } else {
+      $('endWinner').textContent='Ничья';
+      $('endWinner').style.color='var(--ink-dim)';
+    }
+    $('endNote').textContent='Счёт серии '+wins[0]+' : '+wins[1];
+    applyRanked(s.win?s.win.p:null);
+    $('rematchBtn').textContent=(online&&ranked)?'Найти нового соперника':'Реванш';
+    render();
+    setTimeout(()=>$('endOverlay').classList.add('on'),900);
+  } else {
+    over=s.over;
+    render();
+  }
+  suppressWrite=false;
+}
+function freshStateObj(){
+  return {
+    stacks:JSON.stringify(Array.from({length:9},()=>[])),
+    reserve:JSON.stringify([[2,2,2,2,2],[2,2,2,2,2]]),
+    turn:(wins[0]+wins[1])%2,
+    wins:JSON.stringify(wins),
+    over:false, roundId:roundId+1, win:null, draw:false, by:myId, ts:Date.now()
+  };
+}
+const CODE_CHARS='ABCDEFGHJKMNPQRSTUVWXYZ'; // без похожих букв
+function genCode(){let c='';for(let i=0;i<4;i++)c+=CODE_CHARS[Math.random()*CODE_CHARS.length|0];return c;}
+
+let stateListener=null, playersListener=null;
+function detachRoom(){
+  if(roomRef){
+    if(stateListener)roomRef.child('state').off('value',stateListener);
+    if(playersListener)roomRef.child('players').off('value',playersListener);
+    roomRef.child('players/'+(mySeat===0?'host':'guest')).remove().catch(()=>{});
+  }
+  roomRef=null;roomCode=null;online=false;
+}
+function attachStateListener(){
+  stateListener=roomRef.child('state').on('value',snap=>{
+    const s=snap.val();
+    if(!s||s.by===myId)return;
+    applyState(s);
+  });
+  playersListener=roomRef.child('players').on('value',snap=>{
+    const p=snap.val()||{};
+    if(online && mySeat===0 && !p.guest && gameStarted)toast('Соперник отключился');
+    if(online && mySeat===1 && !p.host)toast('Создатель комнаты вышел');
+  });
+}
+let gameStarted=false;
+
+function createRoom(){
+  if(!initFirebase())return;
+  roomCode=genCode();
+  roomRef=db.ref('rooms/'+roomCode);
+  mySeat=0;wins=[0,0];roundId=1;
+  $('w1').textContent=0;$('w2').textContent=0;
+  const init={
+    createdAt:Date.now(),
+    players:{host:myId},
+    state:{
+      stacks:JSON.stringify(Array.from({length:9},()=>[])),
+      reserve:JSON.stringify([[2,2,2,2,2],[2,2,2,2,2]]),
+      turn:0,wins:JSON.stringify([0,0]),over:false,roundId:1,win:null,draw:false,by:myId,ts:Date.now()
+    }
+  };
+  roomRef.set(init).then(()=>{
+    roomRef.child('players/host').onDisconnect().remove();
+    $('roomCodeView').textContent=roomCode;
+    $('menuOverlay').classList.remove('on');
+    $('waitOverlay').classList.add('on');
+    // ждём гостя
+    roomRef.child('players/guest').on('value',snap=>{
+      if(snap.val()){
+        roomRef.child('players/guest').off();
+        startOnline();
+      }
+    });
+  }).catch(e=>toast('Не удалось создать комнату: '+e.message));
+}
+function joinRoom(code){
+  if(!initFirebase())return;
+  code=code.toUpperCase().trim();
+  if(code.length!==4){toast('Код — это 4 буквы');return;}
+  const ref=db.ref('rooms/'+code);
+  ref.get().then(snap=>{
+    if(!snap.exists()){toast('Комната не найдена');return;}
+    const room=snap.val();
+    if(room.players&&room.players.guest){toast('В комнате уже двое');return;}
+    roomCode=code;roomRef=ref;mySeat=1;
+    const st=room.state;
+    wins=JSON.parse(st.wins);roundId=st.roundId;
+    ref.child('players/guest').set(myId).then(()=>{
+      ref.child('players/guest').onDisconnect().remove();
+      $('joinOverlay').classList.remove('on');
+      startOnline();
+      applyStateInitial(st);
+    });
+  }).catch(e=>toast('Ошибка подключения: '+e.message));
+}
+function applyStateInitial(s){
+  stacks=JSON.parse(s.stacks);reserve=JSON.parse(s.reserve);
+  turn=s.turn;over=s.over;
+  $('w1').textContent=wins[0];$('w2').textContent=wins[1];
+  render();
+}
+function startOnline(){
+  online=true;vsAI=false;gameStarted=true;
+  $('name1').textContent = mySeat===0?'Вы · синие':'Соперник';
+  $('name2').textContent = mySeat===0?'Соперник':'Вы · розовые';
+  $('waitOverlay').classList.remove('on');
+  $('menuOverlay').classList.remove('on');
+  attachStateListener();
+  if(mySeat===0){
+    stacks=Array.from({length:9},()=>[]);reserve=[[2,2,2,2,2],[2,2,2,2,2]];
+    turn=0;over=false;selected=null;
+    render();
+  }
+  toast('Соперник подключился — дуэль началась!');
+  $('rulesOverlay').classList.add('on');
+}
+
+/* ---------- РЕЙТИНГ И ПОИСК СОПЕРНИКА ---------- */
+function updateMenuSub(){
+  const r=store.getItem('prisma_rating')||myRating||1000;
+  $('menuSub').textContent = nick ? ('Ник: '+nick+' · рейтинг '+r)
+    : 'Сыграйте рейтинговую дуэль и попадите в топ';
+}
+function loadPlayer(cb){
+  db.ref('players/'+uid).get().then(s=>{
+    const v=s.val();
+    if(v){
+      if(typeof v.rating==='number')myRating=v.rating;
+      if(!nick&&v.name){nick=v.name;store.setItem('prisma_nick',nick);}
+      store.setItem('prisma_rating',myRating);
+    }
+    updateMenuSub();cb&&cb();
+  }).catch(()=>{cb&&cb();});
+}
+function startSearch(){
+  if(!initFirebase())return;
+  ranked=false;detachRoom();
+  if(!nick){
+    $('menuOverlay').classList.remove('on');
+    $('nickOverlay').classList.add('on');
+    setTimeout(()=>$('nickInput').focus(),120);
+    return;
+  }
+  loadPlayer(()=>{
+    db.ref('players/'+uid).update({name:nick,rating:myRating});
+    $('menuOverlay').classList.remove('on');
+    $('nickOverlay').classList.remove('on');
+    $('searchOverlay').classList.add('on');
+    $('searchSub').textContent='Ваш рейтинг: '+myRating;
+    searching=true;
+    tryMatch();
+  });
+}
+function tryMatch(){
+  if(!searching)return;
+  db.ref('queue').get().then(snap=>{
+    if(!searching)return;
+    const q=snap.val()||{},now=Date.now();
+    let cand=null;
+    Object.entries(q).forEach(([k,v])=>{
+      if(k===uid||!v||v.room||now-(v.ts||0)>60000)return;
+      if(!cand||Math.abs((v.rating||1000)-myRating)<Math.abs((cand.v.rating||1000)-myRating))cand={k,v};
+    });
+    if(cand)claimCandidate(cand.k); else enqueueSelf();
+  }).catch(()=>enqueueSelf());
+}
+function claimCandidate(k){
+  const code=genCode();
+  db.ref('queue/'+k).transaction(cur=>{
+    if(cur===null||cur.room)return;      // уже забрали — отмена
+    cur.room=code;cur.by=uid;return cur;
+  },(err,committed)=>{
+    if(!searching)return;
+    if(committed)createRankedRoom(code);
+    else tryMatch();                      // не успели — ищем дальше
+  });
+}
+function enqueueSelf(){
+  if(!searching||queueRef)return;
+  queueRef=db.ref('queue/'+uid);
+  queueRef.set({rating:myRating,name:nick,ts:Date.now()});
+  queueRef.onDisconnect().remove();
+  queueRef.on('value',snap=>{
+    const v=snap.val();
+    if(v&&v.room&&searching){
+      const code=v.room;
+      clearQueue();
+      joinRankedRoom(code);
+    }
+  });
+  // если двое встали в очередь одновременно — раз в 4 сек пробуем забрать другого
+  pollTimer=setInterval(()=>{
+    if(!searching){clearInterval(pollTimer);pollTimer=null;return;}
+    db.ref('queue').get().then(snap=>{
+      if(!searching||!queueRef)return;
+      const q=snap.val()||{},now=Date.now();
+      for(const [k,v] of Object.entries(q)){
+        if(k===uid||!v||v.room||now-(v.ts||0)>60000)continue;
+        if(uid<k)continue;                // забирает только один из двух — без гонки
+        clearQueue();
+        claimCandidate(k);return;
+      }
+      queueRef&&queueRef.update({ts:Date.now()}); // обновляем свежесть
+    });
+  },4000);
+}
+function clearQueue(){
+  if(pollTimer){clearInterval(pollTimer);pollTimer=null;}
+  if(queueRef){queueRef.off();queueRef.remove().catch(()=>{});queueRef=null;}
+}
+function stopSearch(){
+  searching=false;clearQueue();
+  $('searchOverlay').classList.remove('on');
+}
+function rankedInitialState(){
+  return {
+    stacks:JSON.stringify(Array.from({length:9},()=>[])),
+    reserve:JSON.stringify([[2,2,2,2,2],[2,2,2,2,2]]),
+    turn:0,wins:JSON.stringify([0,0]),over:false,roundId:1,win:null,draw:false,by:myId,ts:Date.now()
+  };
+}
+function createRankedRoom(code){
+  roomCode=code;roomRef=db.ref('rooms/'+code);mySeat=0;
+  wins=[0,0];roundId=1;
+  $('w1').textContent=0;$('w2').textContent=0;
+  roomRef.set({
+    createdAt:Date.now(),ranked:true,
+    players:{host:myId},
+    meta:{host:{uid,name:nick,rating:myRating}},
+    state:rankedInitialState()
+  }).then(()=>{
+    roomRef.child('players/host').onDisconnect().remove();
+    $('searchText').textContent='Соперник найден, подключаем';
+    roomRef.child('meta/guest').on('value',snap=>{
+      const g=snap.val();
+      if(g){roomRef.child('meta/guest').off();oppInfo=g;beginRanked();}
+    });
+  }).catch(e=>{toast('Ошибка: '+e.message);stopSearch();$('menuOverlay').classList.add('on');});
+}
+function joinRankedRoom(code){
+  roomRef=db.ref('rooms/'+code);roomCode=code;mySeat=1;
+  roomRef.get().then(snap=>{
+    if(!snap.exists()){
+      toast('Комната исчезла — ищем дальше');
+      roomRef=null;roomCode=null;
+      tryMatch();return;
+    }
+    const room=snap.val();
+    oppInfo=(room.meta&&room.meta.host)||null;
+    wins=JSON.parse(room.state.wins);roundId=room.state.roundId;
+    roomRef.child('players/guest').set(myId);
+    roomRef.child('players/guest').onDisconnect().remove();
+    roomRef.child('meta/guest').set({uid,name:nick,rating:myRating});
+    beginRanked();
+    applyStateInitial(room.state);
+  }).catch(e=>{toast('Ошибка подключения: '+e.message);stopSearch();$('menuOverlay').classList.add('on');});
+}
+function beginRanked(){
+  ranked=true;ratingApplied=false;
+  matchStartRatings={me:myRating,opp:(oppInfo&&oppInfo.rating)||1000};
+  searching=false;clearQueue();
+  $('searchOverlay').classList.remove('on');
+  online=true;vsAI=false;gameStarted=true;
+  const oppName=((oppInfo&&oppInfo.name)||'Соперник')+' · '+matchStartRatings.opp;
+  const meName=(nick||'Вы')+' · '+matchStartRatings.me;
+  $('name1').textContent = mySeat===0?meName:oppName;
+  $('name2').textContent = mySeat===0?oppName:meName;
+  attachStateListener();
+  if(mySeat===0){
+    stacks=Array.from({length:9},()=>[]);reserve=[[2,2,2,2,2],[2,2,2,2,2]];
+    turn=0;over=false;selected=null;render();
+  }
+  toast('Дуэль началась! Соперник: '+((oppInfo&&oppInfo.name)||'Аноним'));
+}
+function applyRanked(winP){
+  if(!(online&&ranked)){$('ratingDelta').textContent='';return;}
+  if(ratingApplied||!matchStartRatings)return;
+  ratingApplied=true;
+  const res = winP===null?0.5:(winP===mySeat?1:0);
+  const exp=1/(1+Math.pow(10,(matchStartRatings.opp-matchStartRatings.me)/400));
+  const delta=Math.round(32*(res-exp));
+  myRating=Math.max(100,matchStartRatings.me+delta);
+  store.setItem('prisma_rating',myRating);
+  try{
+    db.ref('players/'+uid).update({
+      name:nick,rating:myRating,
+      games:firebase.database.ServerValue.increment(1),
+      wins:res===1?firebase.database.ServerValue.increment(1):firebase.database.ServerValue.increment(0)
+    });
+  }catch(e){}
+  $('ratingDelta').textContent=(delta>=0?'+':'')+delta+' → рейтинг '+myRating;
+  $('ratingDelta').style.color=delta>=0?'var(--p1)':'var(--p2)';
+  updateMenuSub();
+}
+/* обработчики */
+$('findMatchBtn').addEventListener('click',startSearch);
+$('cancelSearchBtn').addEventListener('click',()=>{stopSearch();$('menuOverlay').classList.add('on');});
+$('nickGoBtn').addEventListener('click',()=>{
+  const v=$('nickInput').value.trim().slice(0,14);
+  if(v.length<2){toast('Ник — минимум 2 символа');return;}
+  nick=v;store.setItem('prisma_nick',nick);
+  updateMenuSub();
+  startSearch();
+});
+$('nickInput')&&$('nickInput').addEventListener('keydown',e=>{if(e.key==='Enter')$('nickGoBtn').click();});
+$('nickCancelBtn').addEventListener('click',()=>{$('nickOverlay').classList.remove('on');$('menuOverlay').classList.add('on');});
+$('topBtn').addEventListener('click',()=>{
+  if(!initFirebase())return;
+  db.ref('players').orderByChild('rating').limitToLast(20).get().then(snap=>{
+    const arr=[];snap.forEach(ch=>{arr.push(Object.assign({id:ch.key},ch.val()));});
+    arr.sort((a,b)=>(b.rating||0)-(a.rating||0));
+    const el=$('topList');el.innerHTML='';
+    if(!arr.length){
+      const p=document.createElement('p');
+      p.style.textAlign='center';p.style.color='var(--ink-dim)';p.style.fontSize='13px';
+      p.textContent='Пока пусто — сыграйте рейтинговую дуэль первым!';
+      el.appendChild(p);
+    }
+    arr.forEach((pl,i)=>{
+      const row=document.createElement('div');
+      row.className='top-row'+(pl.id===uid?' me':'');
+      const pos=document.createElement('span');pos.className='pos';pos.textContent=(i+1);
+      const nm=document.createElement('span');nm.className='nm';nm.textContent=pl.name||'Аноним';
+      const rt=document.createElement('span');rt.className='rt';rt.textContent=pl.rating||1000;
+      row.append(pos,nm,rt);
+      el.appendChild(row);
+    });
+    $('topOverlay').classList.add('on');
+  }).catch(e=>toast('Не удалось загрузить топ: '+e.message));
+});
+$('topClose').addEventListener('click',()=>$('topOverlay').classList.remove('on'));
+
+/* ---------- monetization mocks ---------- */
+function playAd(cb){
+  const ov=$('adOverlay');ov.classList.add('on');
+  const bar=$('adBar'),tm=$('adTimer');
+  let t=3;tm.textContent=t;bar.style.transition='none';bar.style.width='0';
+  requestAnimationFrame(()=>{bar.style.transition='width 3s linear';bar.style.width='100%';});
+  const iv=setInterval(()=>{t--;tm.textContent=Math.max(0,t);
+    if(t<=0){clearInterval(iv);ov.classList.remove('on');cb&&cb();}},1000);
+}
+$('hintBtn').addEventListener('click',()=>{
+  if(!canAct(turn)){toast('Подсказка доступна на вашем ходу');return;}
+  playAd(()=>{
+    const m=bestMove(turn,3);
+    if(!m)return;
+    selected=m.s;render();
+    const cell=boardEl.children[m.i];
+    cell.animate([{boxShadow:'inset 0 0 0 3px #ffc24d'},{boxShadow:'inset 0 0 0 0 transparent'}],{duration:1600});
+    toast('Лучший ход подсвечен');
+  });
+});
+$('shopBtn').addEventListener('click',()=>$('shopOverlay').classList.add('on'));
+$('shopClose').addEventListener('click',()=>$('shopOverlay').classList.remove('on'));
+
+/* ---------- flow ---------- */
+function newRound(){
+  stacks=Array.from({length:9},()=>[]);
+  reserve=[[2,2,2,2,2],[2,2,2,2,2]];
+  turn=(wins[0]+wins[1])%2;
+  selected=null;over=false;thinking=false;roundId++;
+  boardEl.querySelectorAll('.cell').forEach(c=>c.classList.remove('win'));
+  $('endOverlay').classList.remove('on');
+  render();
+  if(online)roomRef.child('state').set(freshStateObj0());
+  if(vsAI&&turn===1)aiTurn();
+}
+function freshStateObj0(){
+  return {
+    stacks:JSON.stringify(stacks),reserve:JSON.stringify(reserve),
+    turn,wins:JSON.stringify(wins),over:false,roundId,win:null,draw:false,by:myId,ts:Date.now()
+  };
+}
+$('vsAiBtn').addEventListener('click',()=>{
+  detachRoom();gameStarted=false;
+  vsAI=true;$('name1').textContent='Вы';$('name2').textContent='Компьютер';
+  wins=[0,0];$('w1').textContent=0;$('w2').textContent=0;roundId=0;
+  $('menuOverlay').classList.remove('on');
+  $('rulesOverlay').classList.add('on');
+});
+document.querySelectorAll('#diffRow button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('#diffRow button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');aiLevel=+b.dataset.d;
+  });
+});
+$('vsHumanBtn').addEventListener('click',()=>{
+  detachRoom();gameStarted=false;
+  vsAI=false;$('name1').textContent='Синие';$('name2').textContent='Розовые';
+  wins=[0,0];$('w1').textContent=0;$('w2').textContent=0;roundId=0;
+  $('menuOverlay').classList.remove('on');
+  $('rulesOverlay').classList.add('on');
+});
+$('createRoomBtn').addEventListener('click',()=>{detachRoom();createRoom();});
+$('joinRoomBtn').addEventListener('click',()=>{
+  detachRoom();
+  $('menuOverlay').classList.remove('on');
+  $('joinOverlay').classList.add('on');
+  setTimeout(()=>$('codeInput').focus(),100);
+});
+$('joinGoBtn').addEventListener('click',()=>joinRoom($('codeInput').value));
+$('codeInput').addEventListener('keydown',e=>{if(e.key==='Enter')joinRoom($('codeInput').value);});
+$('joinCancelBtn').addEventListener('click',()=>{$('joinOverlay').classList.remove('on');$('menuOverlay').classList.add('on');});
+$('copyCodeBtn').addEventListener('click',()=>{
+  navigator.clipboard&&navigator.clipboard.writeText(roomCode).then(()=>toast('Код скопирован'),()=>toast('Код: '+roomCode));
+});
+$('cancelRoomBtn').addEventListener('click',()=>{
+  if(roomRef)roomRef.remove().catch(()=>{});
+  detachRoom();
+  $('waitOverlay').classList.remove('on');
+  $('menuOverlay').classList.add('on');
+});
+$('rulesClose').addEventListener('click',()=>{
+  $('rulesOverlay').classList.remove('on');
+  if(!online)newRound();
+});
+$('rulesBtn').addEventListener('click',()=>$('rulesOverlay').classList.add('on'));
+$('rematchBtn').addEventListener('click',()=>{
+  if(online&&ranked){
+    $('endOverlay').classList.remove('on');
+    ranked=false;detachRoom();gameStarted=false;
+    startSearch();
+  } else newRound();
+});
+$('toMenuBtn').addEventListener('click',()=>{
+  $('endOverlay').classList.remove('on');
+  ranked=false;stopSearch();
+  detachRoom();gameStarted=false;
+  updateMenuSub();
+  $('menuOverlay').classList.add('on');
+});
+$('menuBtn').addEventListener('click',()=>{updateMenuSub();$('menuOverlay').classList.add('on');});
+window.addEventListener('beforeunload',()=>{clearQueue();detachRoom();});
+
+/* старт */
+stacks=Array.from({length:9},()=>[]);reserve=[[2,2,2,2,2],[2,2,2,2,2]];render();
+updateMenuSub();
+})();
+</script>
+</body>
+</html>
