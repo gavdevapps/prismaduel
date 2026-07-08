@@ -9,6 +9,20 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/favicon.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>
+// Telegram Mini App: если открыты внутри Телеграма — подстраиваемся
+(function(){
+  const tg=window.Telegram&&window.Telegram.WebApp;
+  if(!tg||!tg.initData&&!tg.platform)return;
+  try{
+    tg.ready();tg.expand();
+    tg.setHeaderColor&&tg.setHeaderColor('#0a0d1c');
+    tg.setBackgroundColor&&tg.setBackgroundColor('#0a0d1c');
+    tg.disableVerticalSwipes&&tg.disableVerticalSwipes();
+  }catch(e){}
+})();
+</script>
 <script>
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
@@ -189,6 +203,7 @@ if('serviceWorker' in navigator){
   <button id="rulesBtn">Правила</button>
   <button class="gold" id="hintBtn">▶ Подсказка</button>
   <button class="gold" id="shopBtn">◆ Магазин</button>
+  <button id="soundBtn">🔊</button>
 </footer>
 
 <!-- menu -->
@@ -363,6 +378,50 @@ const LINES=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
 const $=id=>document.getElementById(id);
 const boardEl=$('board');
 
+/* ---------- ЗВУК И ВИБРАЦИЯ (Web Audio, без файлов) ---------- */
+let sndOn=store.getItem('prisma_sound')!=='0';
+let AC=null;
+function ac(){
+  if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}
+  if(AC&&AC.state==='suspended')AC.resume().catch(()=>{});
+  return AC;
+}
+window.addEventListener('pointerdown',()=>ac(),{once:true});
+function tone(f,dur,type,vol,delay,slide){
+  if(!sndOn)return;const a=ac();if(!a)return;
+  const t0=a.currentTime+(delay||0);
+  const o=a.createOscillator(),g=a.createGain();
+  o.type=type||'sine';o.frequency.setValueAtTime(f,t0);
+  if(slide)o.frequency.exponentialRampToValueAtTime(slide,t0+dur);
+  g.gain.setValueAtTime(0.0001,t0);
+  g.gain.exponentialRampToValueAtTime(vol||0.15,t0+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+  o.connect(g);g.connect(a.destination);
+  o.start(t0);o.stop(t0+dur+0.05);
+}
+function noiseBurst(dur,vol,delay){
+  if(!sndOn)return;const a=ac();if(!a)return;
+  const t0=a.currentTime+(delay||0);
+  const n=Math.floor(a.sampleRate*dur);
+  const buf=a.createBuffer(1,n,a.sampleRate);
+  const dd=buf.getChannelData(0);
+  for(let i=0;i<n;i++)dd[i]=(Math.random()*2-1)*(1-i/n);
+  const src=a.createBufferSource();src.buffer=buf;
+  const g=a.createGain();g.gain.value=vol||0.2;
+  const flt=a.createBiquadFilter();flt.type='highpass';flt.frequency.value=1800;
+  src.connect(flt);flt.connect(g);g.connect(a.destination);src.start(t0);
+}
+function buzz(p){if(!sndOn)return;try{navigator.vibrate&&navigator.vibrate(p);}catch(e){}}
+const sfx={
+  place(){tone(520,0.09,'sine',0.12,0,760);buzz(10);},
+  absorb(){tone(300,0.16,'triangle',0.18,0,140);noiseBurst(0.12,0.10);buzz([15,30,25]);},
+  win(){[523,659,784,1046].forEach((f,i)=>tone(f,0.22,'sine',0.16,i*0.11));buzz([30,60,30,60,80]);},
+  lose(){[392,330,262].forEach((f,i)=>tone(f,0.28,'sine',0.14,i*0.14));buzz(120);},
+  tick(){tone(1100,0.05,'square',0.05);},
+  match(){tone(660,0.12,'sine',0.14);tone(990,0.16,'sine',0.14,0.12);buzz([20,40,20]);},
+  select(){tone(840,0.05,'sine',0.06);}
+};
+
 /* ---------- firebase ---------- */
 let db=null, fbReady=false;
 function initFirebase(){
@@ -450,6 +509,7 @@ function legal(i,s){const t=top(i);return !t || t.s<s;}
 function onSlot(p,s){
   if(p!==turn||!canAct(p)||reserve[p][s]===0)return;
   selected=(selected===s?null:s);
+  if(selected!==null)sfx.select();
   render();
 }
 function onCell(i){
@@ -459,7 +519,7 @@ function onCell(i){
 }
 function makeMove(i,s){
   const t=top(i);
-  if(t)spawnShards(i,t.p);
+  if(t){spawnShards(i,t.p);sfx.absorb();}else sfx.place();
   stacks[i].push({p:turn,s});
   reserve[turn][s]--;
   selected=null;
@@ -492,6 +552,8 @@ function finish(win){
   over=true;selected=null;thinking=false;
   stopTurnClock();
   if(win){
+    const iWin = online ? win.p===mySeat : (!vsAI || win.p===0);
+    sfx[iWin?'win':'lose']();
     (win.line||[]).forEach(i=>boardEl.children[i].classList.add('win'));
     wins[win.p]++;$('w1').textContent=wins[0];$('w2').textContent=wins[1];
     (win.line||[]).forEach(i=>spawnShards(i,win.p));
@@ -625,6 +687,7 @@ function startTurnClock(){
   stopTurnClock();
   if(!online||over||!gameStarted)return;
   turnStart=Date.now();
+  let lastTick=-1;
   turnTimerIv=setInterval(()=>{
     if(over||!online){stopTurnClock();return;}
     const left=TURN_MS-(Date.now()-turnStart);
@@ -632,6 +695,7 @@ function startTurnClock(){
     const c=$('turnClock');
     c.textContent='· '+s+' с';
     c.classList.toggle('low',s<=10);
+    if(s!==lastTick){lastTick=s;if(s<=5&&s>0&&turn===mySeat){sfx.tick();buzz(15);}}
     if(left<=0&&turn===mySeat){
       stopTurnClock();timeoutFinish(1-mySeat);      // я просрочил
     }else if(left<=-TURN_GRACE&&turn!==mySeat){
@@ -681,6 +745,7 @@ function applyState(s){
     // соперник завершил партию — воспроизводим финал без повторного инкремента побед
     over=true;
     stopTurnClock();
+    if(s.win)sfx[s.win.p===mySeat?'win':'lose']();
     if(s.win){
       (s.win.line||[]).forEach(i=>boardEl.children[i].classList.add('win'));
       (s.win.line||[]).forEach(i=>spawnShards(i,s.win.p));
@@ -740,6 +805,7 @@ let gameStarted=false;
 
 function createRoom(){
   if(!initFirebase())return;
+  cleanupRooms();
   roomCode=genCode();
   roomRef=db.ref('rooms/'+roomCode);
   mySeat=0;wins=[0,0];roundId=1;
@@ -826,6 +892,13 @@ function loadPlayer(cb){
     updateMenuSub();cb&&cb();
   }).catch(()=>{cb&&cb();});
 }
+function cleanupRooms(){
+  try{
+    db.ref('rooms').orderByChild('createdAt').endAt(Date.now()-6*3600*1000).limitToFirst(25).get()
+      .then(s=>{s.forEach(ch=>db.ref('rooms/'+ch.key).remove().catch(()=>{}));})
+      .catch(()=>{});
+  }catch(e){}
+}
 function startSearch(){
   if(!initFirebase())return;
   ranked=false;detachRoom();
@@ -837,6 +910,7 @@ function startSearch(){
   }
   loadPlayer(()=>{
     db.ref('players/'+uid).update({name:nick,rating:myRating});
+    cleanupRooms();
     $('menuOverlay').classList.remove('on');
     $('nickOverlay').classList.remove('on');
     $('searchOverlay').classList.add('on');
@@ -981,6 +1055,7 @@ function beginRanked(){
     stacks=Array.from({length:9},()=>[]);reserve=[[2,2,2,2,2],[2,2,2,2,2]];
     turn=0;over=false;selected=null;render();
   }
+  sfx.match();
   toast('Дуэль началась! Соперник: '+((oppInfo&&oppInfo.name)||'Аноним'));
 }
 function applyRanked(winP){
@@ -1104,6 +1179,13 @@ $('hintBtn').addEventListener('click',()=>{
 });
 $('shopBtn').addEventListener('click',()=>$('shopOverlay').classList.add('on'));
 $('shopClose').addEventListener('click',()=>$('shopOverlay').classList.remove('on'));
+function syncSoundBtn(){$('soundBtn').textContent=sndOn?'🔊':'🔇';}
+$('soundBtn').addEventListener('click',()=>{
+  sndOn=!sndOn;store.setItem('prisma_sound',sndOn?'1':'0');syncSoundBtn();
+  if(sndOn)sfx.select();
+  toast(sndOn?'Звук и вибрация включены':'Звук выключен');
+});
+syncSoundBtn();
 
 /* ---------- flow ---------- */
 function newRound(){
