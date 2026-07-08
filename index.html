@@ -32,6 +32,8 @@ if('serviceWorker' in navigator){
     background:radial-gradient(120% 90% at 50% 0%,var(--bg1) 0%,var(--bg0) 70%);
     display:flex;flex-direction:column;align-items:center;justify-content:space-between;
     touch-action:manipulation;user-select:none;-webkit-user-select:none;
+    padding-top:env(safe-area-inset-top);
+    padding-bottom:env(safe-area-inset-bottom);
   }
   .amb{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
   .amb i{position:absolute;width:10px;height:10px;opacity:.12;
@@ -103,6 +105,8 @@ if('serviceWorker' in navigator){
   .status .dot{width:10px;height:10px;border-radius:3px;
     clip-path:polygon(30% 0,70% 0,100% 30%,100% 70%,70% 100%,30% 100%,0 70%,0 30%)}
   .status.t1 .dot{background:var(--p1)} .status.t2 .dot{background:var(--p2)}
+  .status .clock{color:var(--gold);margin-left:2px}
+  .status .clock.low{color:#ff5c78}
   .status.think{animation:blink 1s infinite}
   @keyframes blink{50%{opacity:.45}}
 
@@ -175,7 +179,7 @@ if('serviceWorker' in navigator){
 
 <div class="tray p2" id="tray2"><div class="who" id="name2">Соперник</div><div class="stock" id="stock2"></div></div>
 
-<div class="status t1" id="status"><span class="dot"></span><span id="statusText">Ваш ход</span></div>
+<div class="status t1" id="status"><span class="dot"></span><span id="statusText">Ваш ход</span><span id="turnClock" class="clock"></span></div>
 <div id="board"></div>
 
 <div class="tray p1 turn" id="tray1"><div class="who" id="name1">Вы</div><div class="stock" id="stock1"></div></div>
@@ -281,7 +285,8 @@ if('serviceWorker' in navigator){
       У каждого — <b>10 кристаллов</b>: пять размеров, по два каждого.<br><br>
       Выберите кристалл в своём ряду и поставьте на любую клетку. <b>Крупный кристалл можно поставить поверх более мелкого</b> — даже чужого, поглотив его.<br><br>
       Побеждает тот, чьи <b>три кристалла видны в ряд</b>.<br><br>
-      Точки под кристаллом — «погребённые». Самых больших — всего два: тратьте с умом!
+      Точки под кристаллом — «погребённые». Самых больших — всего два: тратьте с умом!<br><br>
+      В онлайн-дуэлях на ход даётся <b>30 секунд</b> — не успели, засчитывается поражение.
     </div>
     <button class="btn" id="rulesClose">В бой</button>
   </div>
@@ -468,6 +473,7 @@ function makeMove(i,s){
   }
   render();
   pushState(null);
+  startTurnClock();
   if(vsAI&&turn===1&&!over)aiTurn();
 }
 function hasMoves(p){
@@ -484,17 +490,18 @@ function checkWin(){
 }
 function finish(win){
   over=true;selected=null;thinking=false;
+  stopTurnClock();
   if(win){
-    win.line.forEach(i=>boardEl.children[i].classList.add('win'));
+    (win.line||[]).forEach(i=>boardEl.children[i].classList.add('win'));
     wins[win.p]++;$('w1').textContent=wins[0];$('w2').textContent=wins[1];
-    win.line.forEach(i=>spawnShards(i,win.p));
+    (win.line||[]).forEach(i=>spawnShards(i,win.p));
     let name;
     if(online)name = win.p===mySeat ? 'Вы победили!' : 'Соперник победил';
     else if(vsAI)name = win.p===0?'Вы победили!':'Компьютер победил';
     else name = win.p===0?'Синие победили!':'Розовые победили!';
     $('endWinner').textContent=name;
     $('endWinner').style.color=win.p===0?'var(--p1)':'var(--p2)';
-    $('endNote').textContent='Счёт серии '+wins[0]+' : '+wins[1];
+    $('endNote').textContent=(win.timeout?'Время на ход истекло. ':'')+'Счёт серии '+wins[0]+' : '+wins[1];
   } else {
     $('endWinner').textContent='Ничья';
     $('endWinner').style.color='var(--ink-dim)';
@@ -607,6 +614,38 @@ function aiTurn(){
   },650+Math.random()*500);
 }
 
+/* ---------- ТАЙМЕР ХОДА (только онлайн) ---------- */
+const TURN_MS=30000, TURN_GRACE=3000;
+let turnTimerIv=null, turnStart=0;
+function stopTurnClock(){
+  if(turnTimerIv){clearInterval(turnTimerIv);turnTimerIv=null;}
+  const c=$('turnClock');if(c){c.textContent='';c.classList.remove('low');}
+}
+function startTurnClock(){
+  stopTurnClock();
+  if(!online||over||!gameStarted)return;
+  turnStart=Date.now();
+  turnTimerIv=setInterval(()=>{
+    if(over||!online){stopTurnClock();return;}
+    const left=TURN_MS-(Date.now()-turnStart);
+    const s=Math.max(0,Math.ceil(left/1000));
+    const c=$('turnClock');
+    c.textContent='· '+s+' с';
+    c.classList.toggle('low',s<=10);
+    if(left<=0&&turn===mySeat){
+      stopTurnClock();timeoutFinish(1-mySeat);      // я просрочил
+    }else if(left<=-TURN_GRACE&&turn!==mySeat){
+      stopTurnClock();timeoutFinish(mySeat);        // соперник пропал
+    }
+  },250);
+}
+function timeoutFinish(winnerSeat){
+  if(over)return;
+  const win={line:[],p:winnerSeat,timeout:true};
+  finish(win);
+  pushState(win);
+}
+
 /* ---------- ONLINE: комнаты и синхронизация ---------- */
 function serialize(winInfo,draw){
   return {
@@ -614,7 +653,7 @@ function serialize(winInfo,draw){
     reserve:JSON.stringify(reserve),
     turn, wins:JSON.stringify(wins),
     over, roundId,
-    win: winInfo?{line:winInfo.line,p:winInfo.p}:null,
+    win: winInfo?{line:winInfo.line||[],p:winInfo.p,timeout:!!winInfo.timeout}:null,
     draw: !!draw,
     by: myId, ts: Date.now()
   };
@@ -637,19 +676,21 @@ function applyState(s){
     boardEl.querySelectorAll('.cell').forEach(c=>c.classList.remove('win'));
     $('endOverlay').classList.remove('on');
     render();
+    startTurnClock();
   } else if(s.over&&!over){
     // соперник завершил партию — воспроизводим финал без повторного инкремента побед
     over=true;
+    stopTurnClock();
     if(s.win){
-      s.win.line.forEach(i=>boardEl.children[i].classList.add('win'));
-      s.win.line.forEach(i=>spawnShards(i,s.win.p));
+      (s.win.line||[]).forEach(i=>boardEl.children[i].classList.add('win'));
+      (s.win.line||[]).forEach(i=>spawnShards(i,s.win.p));
       $('endWinner').textContent = s.win.p===mySeat?'Вы победили!':'Соперник победил';
       $('endWinner').style.color=s.win.p===0?'var(--p1)':'var(--p2)';
     } else {
       $('endWinner').textContent='Ничья';
       $('endWinner').style.color='var(--ink-dim)';
     }
-    $('endNote').textContent='Счёт серии '+wins[0]+' : '+wins[1];
+    $('endNote').textContent=(s.win&&s.win.timeout?'Время на ход истекло. ':'')+'Счёт серии '+wins[0]+' : '+wins[1];
     applyRanked(s.win?s.win.p:null);
     $('rematchBtn').textContent=(online&&ranked)?'Найти нового соперника':'Реванш';
     render();
@@ -657,6 +698,7 @@ function applyState(s){
   } else {
     over=s.over;
     render();
+    startTurnClock();
   }
   suppressWrite=false;
 }
@@ -680,6 +722,7 @@ function detachRoom(){
     roomRef.child('players/'+(mySeat===0?'host':'guest')).remove().catch(()=>{});
   }
   roomRef=null;roomCode=null;online=false;
+  stopTurnClock();
 }
 function attachStateListener(){
   stateListener=roomRef.child('state').on('value',snap=>{
@@ -1071,7 +1114,7 @@ function newRound(){
   boardEl.querySelectorAll('.cell').forEach(c=>c.classList.remove('win'));
   $('endOverlay').classList.remove('on');
   render();
-  if(online)roomRef.child('state').set(freshStateObj0());
+  if(online){roomRef.child('state').set(freshStateObj0());startTurnClock();}
   if(vsAI&&turn===1)aiTurn();
 }
 function freshStateObj0(){
@@ -1121,7 +1164,7 @@ $('cancelRoomBtn').addEventListener('click',()=>{
 });
 $('rulesClose').addEventListener('click',()=>{
   $('rulesOverlay').classList.remove('on');
-  if(!online)newRound();
+  if(!online)newRound(); else startTurnClock();
 });
 $('rulesBtn').addEventListener('click',()=>$('rulesOverlay').classList.add('on'));
 $('rematchBtn').addEventListener('click',()=>{
