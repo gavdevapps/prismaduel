@@ -818,12 +818,23 @@ function tryMatch(){
 function claimCandidate(k){
   const code=genCode();
   db.ref('queue/'+k).transaction(cur=>{
-    if(cur===null||cur.room)return;      // уже забрали — отмена
+    if(cur===null){
+      // Первый прогон идёт с пустым локальным кэшем: возвращаем «пробное»
+      // значение — Firebase сверит с сервером и перезапустит с реальными данными.
+      return {room:code,by:uid,ghost:true};
+    }
+    if(cur.room)return;                  // уже забрали — отмена
     cur.room=code;cur.by=uid;return cur;
-  },(err,committed)=>{
+  },(err,committed,snap)=>{
     if(!searching)return;
-    if(committed)createRankedRoom(code);
-    else tryMatch();                      // не успели — ищем дальше
+    if(err){setTimeout(tryMatch,500);return;}
+    const v=committed&&snap?snap.val():null;
+    if(committed&&v&&!v.ghost&&v.by===uid){
+      createRankedRoom(code);            // захват удался — создаём комнату
+    }else{
+      if(committed&&v&&v.ghost)db.ref('queue/'+k).remove().catch(()=>{}); // кандидат исчез
+      setTimeout(tryMatch,400+Math.random()*400);  // повтор с паузой
+    }
   });
 }
 function enqueueSelf(){
@@ -982,13 +993,54 @@ $('topBtn').addEventListener('click',()=>{
 $('topClose').addEventListener('click',()=>$('topOverlay').classList.remove('on'));
 
 /* ---------- monetization mocks ---------- */
-function playAd(cb){
+/* =====================================================================
+   ADMOB. Тестовые ID Google — реклама уже работает в сборке.
+   После регистрации на admob.google.com замените на свои:
+   - appId дополнительно вписывается в AndroidManifest.xml (см. инструкцию)
+   ===================================================================== */
+const ADMOB = {
+  rewardedId: 'ca-app-pub-3940256099942544/5224354917'   // ТЕСТОВЫЙ rewarded
+};
+let admobReady=false;
+(async function initAdMob(){
+  try{
+    const A=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.AdMob;
+    if(!A)return;                        // веб или плагин не установлен — тихо выходим
+    await A.initialize({});
+    admobReady=true;
+  }catch(e){console.log('AdMob init:',e);}
+})();
+
+function playAdMock(cb){
   const ov=$('adOverlay');ov.classList.add('on');
   const bar=$('adBar'),tm=$('adTimer');
   let t=3;tm.textContent=t;bar.style.transition='none';bar.style.width='0';
   requestAnimationFrame(()=>{bar.style.transition='width 3s linear';bar.style.width='100%';});
   const iv=setInterval(()=>{t--;tm.textContent=Math.max(0,t);
     if(t<=0){clearInterval(iv);ov.classList.remove('on');cb&&cb();}},1000);
+}
+
+function playAd(cb){
+  if(!admobReady){playAdMock(cb);return;}          // фолбэк: веб-версия и сбои
+  const A=window.Capacitor.Plugins.AdMob;
+  let rewarded=false,done=false;
+  const listeners=[];
+  const cleanup=()=>{listeners.forEach(l=>{try{l.then?l.then(x=>x.remove()):l.remove();}catch(e){}});};
+  const finish=ok=>{
+    if(done)return;done=true;cleanup();
+    if(ok)cb&&cb();
+    else toast('Ролик не досмотрен — награда не получена');
+  };
+  try{
+    listeners.push(A.addListener('onRewardedVideoAdReward',()=>{rewarded=true;}));
+    listeners.push(A.addListener('onRewardedVideoAdDismissed',()=>finish(rewarded)));
+    listeners.push(A.addListener('onRewardedVideoAdFailedToLoad',()=>{done=true;cleanup();playAdMock(cb);}));
+    A.prepareRewardVideoAd({adId:ADMOB.rewardedId})
+      .then(()=>A.showRewardVideoAd())
+      .then(res=>{ if(res&&(res.type||res.amount))rewarded=true; })
+      .catch(()=>{if(!done){done=true;cleanup();playAdMock(cb);}});
+    setTimeout(()=>{if(!done&&!rewarded){/* страховка на молчание событий */}},60000);
+  }catch(e){done=true;cleanup();playAdMock(cb);}
 }
 $('hintBtn').addEventListener('click',()=>{
   if(!canAct(turn)){toast('Подсказка доступна на вашем ходу');return;}
