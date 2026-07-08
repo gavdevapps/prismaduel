@@ -817,25 +817,33 @@ function tryMatch(){
 }
 function claimCandidate(k){
   const code=genCode();
-  db.ref('queue/'+k).transaction(cur=>{
-    if(cur===null){
-      // Первый прогон идёт с пустым локальным кэшем: возвращаем «пробное»
-      // значение — Firebase сверит с сервером и перезапустит с реальными данными.
-      return {room:code,by:uid,ghost:true};
-    }
-    if(cur.room)return;                  // уже забрали — отмена
-    cur.room=code;cur.by=uid;return cur;
-  },(err,committed,snap)=>{
-    if(!searching)return;
-    if(err){setTimeout(tryMatch,500);return;}
-    const v=committed&&snap?snap.val():null;
-    if(committed&&v&&!v.ghost&&v.by===uid){
-      createRankedRoom(code);            // захват удался — создаём комнату
-    }else{
-      if(committed&&v&&v.ghost)db.ref('queue/'+k).remove().catch(()=>{}); // кандидат исчез
-      setTimeout(tryMatch,400+Math.random()*400);  // повтор с паузой
-    }
-  });
+  // ШАГ 1: сначала полностью создаём комнату — чтобы захваченный игрок
+  // гарантированно нашёл её, как только получит код (иначе гонка).
+  const ref=db.ref('rooms/'+code);
+  ref.set({
+    createdAt:Date.now(),ranked:true,
+    players:{host:myId},
+    meta:{host:{uid,name:nick,rating:myRating}},
+    state:rankedInitialState()
+  }).then(()=>{
+    if(!searching){ref.remove().catch(()=>{});return;}
+    // ШАГ 2: захватываем кандидата в очереди
+    db.ref('queue/'+k).transaction(cur=>{
+      if(cur===null)return {room:code,by:uid,ghost:true}; // пустой кэш — пробный прогон
+      if(cur.room)return;                                  // уже забрали — отмена
+      cur.room=code;cur.by=uid;return cur;
+    },(err,committed,snap)=>{
+      if(!searching){ref.remove().catch(()=>{});return;}
+      const v=committed&&snap?snap.val():null;
+      if(!err&&committed&&v&&!v.ghost&&v.by===uid){
+        adoptRankedRoom(code);                             // ждём гостя в готовой комнате
+      }else{
+        ref.remove().catch(()=>{});                        // захват сорвался — прибираем комнату
+        if(committed&&v&&v.ghost)db.ref('queue/'+k).remove().catch(()=>{});
+        setTimeout(tryMatch,400+Math.random()*400);
+      }
+    });
+  }).catch(e=>{toast('Ошибка: '+e.message);setTimeout(tryMatch,800);});
 }
 function enqueueSelf(){
   if(!searching||queueRef)return;
@@ -881,28 +889,26 @@ function rankedInitialState(){
     turn:0,wins:JSON.stringify([0,0]),over:false,roundId:1,win:null,draw:false,by:myId,ts:Date.now()
   };
 }
-function createRankedRoom(code){
+function adoptRankedRoom(code){
   roomCode=code;roomRef=db.ref('rooms/'+code);mySeat=0;
   wins=[0,0];roundId=1;
   $('w1').textContent=0;$('w2').textContent=0;
-  roomRef.set({
-    createdAt:Date.now(),ranked:true,
-    players:{host:myId},
-    meta:{host:{uid,name:nick,rating:myRating}},
-    state:rankedInitialState()
-  }).then(()=>{
-    roomRef.child('players/host').onDisconnect().remove();
-    $('searchText').textContent='Соперник найден, подключаем';
-    roomRef.child('meta/guest').on('value',snap=>{
-      const g=snap.val();
-      if(g){roomRef.child('meta/guest').off();oppInfo=g;beginRanked();}
-    });
-  }).catch(e=>{toast('Ошибка: '+e.message);stopSearch();$('menuOverlay').classList.add('on');});
+  roomRef.child('players/host').onDisconnect().remove();
+  $('searchText').textContent='Соперник найден, подключаем';
+  roomRef.child('meta/guest').on('value',snap=>{
+    const g=snap.val();
+    if(g){roomRef.child('meta/guest').off();oppInfo=g;beginRanked();}
+  });
 }
-function joinRankedRoom(code){
+function joinRankedRoom(code,attempt){
+  attempt=attempt||0;
   roomRef=db.ref('rooms/'+code);roomCode=code;mySeat=1;
   roomRef.get().then(snap=>{
     if(!snap.exists()){
+      if(attempt<8){                       // комната могла ещё не долететь — ждём
+        setTimeout(()=>{if(searching)joinRankedRoom(code,attempt+1);},500);
+        return;
+      }
       toast('Комната исчезла — ищем дальше');
       roomRef=null;roomCode=null;
       tryMatch();return;
