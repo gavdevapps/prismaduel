@@ -132,6 +132,7 @@ if('serviceWorker' in navigator){
     color:var(--ink-dim);font-family:'Outfit';font-size:11px;letter-spacing:.12em;text-transform:uppercase;
     padding:9px 14px;cursor:pointer}
   footer button.gold{color:var(--gold)}
+  footer button#langBtn{color:var(--p1);font-family:'Unbounded';font-weight:600;font-size:10px}
 
   .overlay{position:fixed;inset:0;background:rgba(6,8,18,.72);backdrop-filter:blur(8px);
     display:none;align-items:center;justify-content:center;z-index:100;padding:24px}
@@ -187,8 +188,8 @@ if('serviceWorker' in navigator){
 <div class="amb" id="amb"></div>
 
 <header>
-  <div class="logo">PRISMA: ДУЭЛЬ<small>онлайн-версия</small></div>
-  <div class="series"><b class="s1" id="w1">0</b><span>серия</span><b class="s2" id="w2">0</b></div>
+  <div class="logo">PRISMA: ДУЭЛЬ<small id="logoSub">онлайн-версия</small></div>
+  <div class="series"><b class="s1" id="w1">0</b><span id="seriesLabel">серия</span><b class="s2" id="w2">0</b></div>
 </header>
 
 <div class="tray p2" id="tray2"><div class="who" id="name2">Соперник</div><div class="stock" id="stock2"></div></div>
@@ -202,20 +203,21 @@ if('serviceWorker' in navigator){
   <button id="menuBtn">Меню</button>
   <button id="rulesBtn">Правила</button>
   <button class="gold" id="hintBtn">▶ Подсказка</button>
-  <button class="gold" id="shopBtn">◆ Магазин</button>
+  <button class="gold" id="shopBtn" data-i18n="shopBtn">◆ Магазин</button>
   <button id="soundBtn">🔊</button>
+  <button id="langBtn">EN</button>
 </footer>
 
 <!-- menu -->
 <div class="overlay on" id="menuOverlay">
   <div class="modal">
-    <h2>PRISMA: Дуэль</h2>
-    <p>Крестики-нолики нового поколения: крупные кристаллы поглощают мелкие.</p>
+    <h2 id="menuTitle">PRISMA: Дуэль</h2>
+    <p id="menuTagline">Крестики-нолики нового поколения: крупные кристаллы поглощают мелкие.</p>
     <button class="btn" id="vsAiBtn">Против компьютера</button>
     <div class="diff" id="diffRow">
-      <button data-d="0">Новичок</button>
-      <button data-d="1" class="on">Мастер</button>
-      <button data-d="2">Гроссмейстер</button>
+      <button data-d="0" id="diffNovice">Новичок</button>
+      <button data-d="1" class="on" id="diffMaster">Мастер</button>
+      <button data-d="2" id="diffGM">Гроссмейстер</button>
     </div>
     <button class="btn ghost" id="vsHumanBtn">Вдвоём на одном устройстве</button>
     <button class="btn gold" id="findMatchBtn">⚔ Найти соперника · рейтинг</button>
@@ -229,8 +231,8 @@ if('serviceWorker' in navigator){
 <!-- waiting room -->
 <div class="overlay" id="waitOverlay">
   <div class="modal">
-    <h2>Комната создана</h2>
-    <p style="margin-bottom:2px">Продиктуйте или отправьте код сопернику:</p>
+    <h2 id="waitTitle">Комната создана</h2>
+    <p id="waitDesc" style="margin-bottom:2px">Продиктуйте или отправьте код сопернику:</p>
     <div class="room-code" id="roomCodeView">····</div>
     <p class="waiting-dots" id="waitText">Ждём соперника</p>
     <button class="btn ghost" id="copyCodeBtn">Скопировать код</button>
@@ -241,8 +243,8 @@ if('serviceWorker' in navigator){
 <!-- join room -->
 <div class="overlay" id="joinOverlay">
   <div class="modal">
-    <h2>Вход по коду</h2>
-    <p style="margin-bottom:0">Введите 4 буквы кода комнаты</p>
+    <h2 id="joinTitle">Вход по коду</h2>
+    <p id="joinDesc" style="margin-bottom:0">Введите 4 буквы кода комнаты</p>
     <input class="code-input" id="codeInput" maxlength="4" autocomplete="off" placeholder="XXXX">
     <button class="btn" id="joinGoBtn">Подключиться</button>
     <button class="btn ghost" id="joinCancelBtn">Назад</button>
@@ -252,7 +254,7 @@ if('serviceWorker' in navigator){
 <!-- поиск соперника -->
 <div class="overlay" id="searchOverlay">
   <div class="modal">
-    <h2>Поиск соперника</h2>
+    <h2 id="searchTitle">Поиск соперника</h2>
     <p class="waiting-dots" id="searchText">Ищем достойного противника</p>
     <p id="searchSub" style="font-size:11.5px;margin-top:-10px"></p>
     <button class="btn ghost" id="cancelSearchBtn">Отменить</button>
@@ -262,10 +264,10 @@ if('serviceWorker' in navigator){
 <!-- ник -->
 <div class="overlay" id="nickOverlay">
   <div class="modal">
-    <h2>Ваш ник</h2>
-    <p>Под этим именем вас увидят соперники и таблица лидеров.</p>
+    <h2 id="nickTitle">Ваш ник</h2>
+    <p id="nickDesc">Под этим именем вас увидят соперники и таблица лидеров.</p>
     <input class="code-input" id="nickInput" maxlength="14" autocomplete="off"
-           style="letter-spacing:.05em;font-size:18px;text-transform:none" placeholder="Игрок">
+           style="letter-spacing:.05em;font-size:18px;text-transform:none" placeholder="Игрок" >
     <button class="btn" id="nickGoBtn">Сохранить и искать</button>
     <button class="btn ghost" id="nickCancelBtn">Назад</button>
   </div>
@@ -274,7 +276,7 @@ if('serviceWorker' in navigator){
 <!-- топ игроков -->
 <div class="overlay" id="topOverlay">
   <div class="modal">
-    <h2>🏆 Топ игроков</h2>
+    <h2 id="topTitle">🏆 Топ игроков</h2>
     <div id="topList" style="text-align:left;max-height:52vh;overflow:auto;margin-bottom:6px"></div>
     <button class="btn ghost" id="topClose">Закрыть</button>
   </div>
@@ -295,8 +297,8 @@ if('serviceWorker' in navigator){
 <!-- rules -->
 <div class="overlay" id="rulesOverlay">
   <div class="modal">
-    <h2>Правила дуэли</h2>
-    <div class="rules-list">
+    <h2 id="rulesTitle">Правила дуэли</h2>
+    <div class="rules-list" id="rulesBody">
       У каждого — <b>10 кристаллов</b>: пять размеров, по два каждого.<br><br>
       Выберите кристалл в своём ряду и поставьте на любую клетку. <b>Крупный кристалл можно поставить поверх более мелкого</b> — даже чужого, поглотив его.<br><br>
       Побеждает тот, чьи <b>три кристалла видны в ряд</b>.<br><br>
@@ -310,8 +312,8 @@ if('serviceWorker' in navigator){
 <!-- fake rewarded ad -->
 <div class="overlay" id="adOverlay">
   <div class="modal">
-    <h2>Реклама</h2>
-    <p>Здесь будет rewarded-ролик (AdMob / Unity Ads). В прототипе — имитация.</p>
+    <h2 id="adTitle">Реклама</h2>
+    <p id="adDesc">Здесь будет rewarded-ролик (AdMob / Unity Ads). В прототипе — имитация.</p>
     <div class="adbar"><i id="adBar"></i></div>
     <p id="adTimer" style="margin:0;font-size:12px">3</p>
   </div>
@@ -320,12 +322,14 @@ if('serviceWorker' in navigator){
 <!-- shop -->
 <div class="overlay" id="shopOverlay">
   <div class="modal">
-    <h2>Магазин</h2>
-    <p style="margin-bottom:4px">Витрина будущих покупок — платежи в прототипе отключены.</p>
+    <h2 id="shopTitle">Магазин</h2>
+    <p id="shopDesc" style="margin-bottom:4px">Витрина будущих покупок — платежи в прототипе отключены.</p>
+    <div id="shopItems">
     <div class="shop-item"><div><b>Убрать рекламу навсегда</b><span>Играйте без пауз</span></div><div class="price">$2.99</div></div>
     <div class="shop-item"><div><b>Prisma+ подписка</b><span>Без рекламы · безлимит подсказок · темы</span></div><div class="price">$4.99/мес</div></div>
     <div class="shop-item"><div><b>Тема «Аврора»</b><span>Изумруд и северное сияние</span></div><div class="price">$1.99</div></div>
     <div class="shop-item"><div><b>Онлайн-сезон</b><span>Рейтинг, лиги, награды</span></div><div class="price">скоро</div></div>
+    </div>
     <button class="btn ghost" id="shopClose">Закрыть</button>
   </div>
 </div>
@@ -373,6 +377,158 @@ let nick=store.getItem('prisma_nick')||'';
 let myRating=parseInt(store.getItem('prisma_rating')||'1000',10);
 let ranked=false, matchStartRatings=null, oppInfo=null, ratingApplied=false;
 let searching=false, queueRef=null, pollTimer=null;
+
+/* ---------- ЛОКАЛИЗАЦИЯ ---------- */
+const I18N = {
+ru: {
+  logoSub:'онлайн-версия', seriesLabel:'серия',
+  menuBtn:'Меню', rulesBtn:'Правила', hintBtn:'▶ Подсказка', shopBtn:'◆ Магазин',
+  menuTitle:'PRISMA: Дуэль', menuTagline:'Крестики-нолики нового поколения: крупные кристаллы поглощают мелкие.',
+  vsAiBtn:'Против компьютера', diffNovice:'Новичок', diffMaster:'Мастер', diffGM:'Гроссмейстер',
+  vsHumanBtn:'Вдвоём на одном устройстве', findMatchBtn:'⚔ Найти соперника · рейтинг',
+  createRoomBtn:'С другом: создать комнату', joinRoomBtn:'С другом: войти по коду', topBtn:'🏆 Топ игроков',
+  menuSubGuest:'Сыграйте рейтинговую дуэль и попадите в топ', menuSubNamed:'Ник: {0} · рейтинг {1}',
+  waitTitle:'Комната создана', waitDesc:'Продиктуйте или отправьте код сопернику:', waitText:'Ждём соперника',
+  copyCodeBtn:'Скопировать код', cancelRoomBtn:'Отменить',
+  joinTitle:'Вход по коду', joinDesc:'Введите 4 буквы кода комнаты', joinGoBtn:'Подключиться', joinCancelBtn:'Назад',
+  searchTitle:'Поиск соперника', searchText:'Ищем достойного противника', searchSub:'Ваш рейтинг: {0}',
+  cancelSearchBtn:'Отменить', searchFoundConnecting:'Соперник найден, подключаем',
+  nickTitle:'Ваш ник', nickDesc:'Под этим именем вас увидят соперники и таблица лидеров.',
+  nickPlaceholder:'Игрок', nickGoBtn:'Сохранить и искать', nickCancelBtn:'Назад',
+  topTitle:'🏆 Топ игроков', topClose:'Закрыть', topEmpty:'Пока пусто — сыграйте рейтинговую дуэль первым!', anon:'Аноним',
+  endTitleDefault:'Раунд окончен', rematchDefault:'Реванш', rematchRanked:'Найти нового соперника', toMenuBtn:'В меню',
+  rulesTitle:'Правила дуэли',
+  rulesBody:'У каждого — <b>10 кристаллов</b>: пять размеров, по два каждого.<br><br>'+
+    'Выберите кристалл в своём ряду и поставьте на любую клетку. <b>Крупный кристалл можно поставить поверх более мелкого</b> — даже чужого, поглотив его.<br><br>'+
+    'Побеждает тот, чьи <b>три кристалла видны в ряд</b>.<br><br>'+
+    'Точки под кристаллом — «погребённые». Самых больших — всего два: тратьте с умом!<br><br>'+
+    'В онлайн-дуэлях на ход даётся <b>30 секунд</b> — не успели, засчитывается поражение.',
+  rulesClose:'В бой',
+  adTitle:'Реклама', adDesc:'Здесь будет rewarded-ролик (AdMob / Unity Ads). В прототипе — имитация.',
+  shopTitle:'Магазин', shopDesc:'Витрина будущих покупок — платежи в прототипе отключены.',
+  shop1t:'Убрать рекламу навсегда', shop1s:'Играйте без пауз',
+  shop2t:'Prisma+ подписка', shop2s:'Без рекламы · безлимит подсказок · темы',
+  shop3t:'Тема «Аврора»', shop3s:'Изумруд и северное сияние',
+  shop4t:'Онлайн-сезон', shop4s:'Рейтинг, лиги, награды', shopSoon:'скоро',
+  shopClose:'Закрыть',
+  youName:'Вы', oppName:'Соперник', computerName:'Компьютер', blueName:'Синие', pinkName:'Розовые',
+  youBlue:'Вы · синие', youPink:'Вы · розовые',
+  statusOver:'Игра окончена', statusThinking:'Компьютер думает…',
+  statusYourTurn:'Ваш ход', statusOppTurn:'Ход соперника', statusCompTurn:'Ход компьютера',
+  statusBlueTurn:'Ход синих', statusPinkTurn:'Ход розовых',
+  cantPlaceHere:'Сюда нельзя — кристалл слишком мал',
+  skipTurn:'{0} некуда ходить — пропуск', skipBlue:'Синим', skipPink:'Розовым',
+  youWon:'Вы победили!', oppWon:'Соперник победил', compWon:'Компьютер победил',
+  blueWon:'Синие победили!', pinkWon:'Розовые победили!', draw:'Ничья',
+  timeUp:'Время на ход истекло. ', scoreLine:'Счёт серии {0} : {1}', crystalsOut:'Кристаллы закончились. ',
+  oppDisconnected:'Соперник отключился', hostLeft:'Создатель комнаты вышел',
+  roomCreateFail:'Не удалось создать комнату: {0}', code4letters:'Код — это 4 буквы',
+  roomNotFound:'Комната не найдена', roomFull:'В комнате уже двое', connectFail:'Ошибка подключения: {0}',
+  duelStarted:'Соперник подключился — дуэль началась!',
+  nickTooShort:'Ник — минимум 2 символа',
+  ratingLine:'{0} → рейтинг {1}',
+  matchStartedWith:'Дуэль началась! Соперник: {0}',
+  roomVanished:'Комната исчезла — ищем дальше',
+  firebaseKeysMissing:'Сначала вставьте ключи Firebase в код (см. комментарий ШАГ 1)',
+  firebaseErr:'Ошибка Firebase: {0}', genericErr:'Ошибка: {0}',
+  topLoadFail:'Не удалось загрузить топ: {0}',
+  adNotWatched:'Ролик не досмотрен — награда не получена',
+  hintOnlyOnTurn:'Подсказка доступна на вашем ходу', hintShown:'Лучший ход подсвечен',
+  soundOn:'Звук и вибрация включены', soundOff:'Звук выключен',
+  codeCopied:'Код скопирован', codeIs:'Код: {0}',
+},
+en: {
+  logoSub:'online edition', seriesLabel:'series',
+  menuBtn:'Menu', rulesBtn:'Rules', hintBtn:'▶ Hint', shopBtn:'◆ Shop',
+  menuTitle:'PRISMA: Duel', menuTagline:'Tic-tac-toe reinvented: bigger crystals absorb smaller ones.',
+  vsAiBtn:'Vs computer', diffNovice:'Novice', diffMaster:'Master', diffGM:'Grandmaster',
+  vsHumanBtn:'Two players, one device', findMatchBtn:'⚔ Find opponent · ranked',
+  createRoomBtn:'With a friend: create room', joinRoomBtn:'With a friend: join by code', topBtn:'🏆 Leaderboard',
+  menuSubGuest:'Play a ranked duel and climb the leaderboard', menuSubNamed:'Name: {0} · rating {1}',
+  waitTitle:'Room created', waitDesc:'Tell or send this code to your opponent:', waitText:'Waiting for opponent',
+  copyCodeBtn:'Copy code', cancelRoomBtn:'Cancel',
+  joinTitle:'Join by code', joinDesc:'Enter the 4-letter room code', joinGoBtn:'Connect', joinCancelBtn:'Back',
+  searchTitle:'Finding opponent', searchText:'Looking for a worthy rival', searchSub:'Your rating: {0}',
+  cancelSearchBtn:'Cancel', searchFoundConnecting:'Opponent found, connecting',
+  nickTitle:'Your nickname', nickDesc:'Opponents and the leaderboard will see you by this name.',
+  nickPlaceholder:'Player', nickGoBtn:'Save and search', nickCancelBtn:'Back',
+  topTitle:'🏆 Leaderboard', topClose:'Close', topEmpty:'Nobody here yet — play the first ranked duel!', anon:'Anonymous',
+  endTitleDefault:'Round over', rematchDefault:'Rematch', rematchRanked:'Find a new opponent', toMenuBtn:'Menu',
+  rulesTitle:'Duel rules',
+  rulesBody:'Each player has <b>10 crystals</b>: five sizes, two of each.<br><br>'+
+    'Pick a crystal from your row and place it on any cell. <b>A bigger crystal can be placed on top of a smaller one</b> — even the opponent\'s — absorbing it.<br><br>'+
+    'Whoever gets <b>three visible crystals in a row</b> wins.<br><br>'+
+    'Dots under a crystal mean pieces are buried beneath. You only have two of the biggest size — spend them wisely!<br><br>'+
+    'In online duels each move has a <b>30-second</b> limit — run out of time and you lose.',
+  rulesClose:'Fight',
+  adTitle:'Ad', adDesc:'A rewarded video (AdMob / Unity Ads) will play here. This is a mock in the prototype.',
+  shopTitle:'Shop', shopDesc:'Preview of future purchases — payments are disabled in the prototype.',
+  shop1t:'Remove ads forever', shop1s:'Play without interruptions',
+  shop2t:'Prisma+ subscription', shop2s:'No ads · unlimited hints · themes',
+  shop3t:'"Aurora" theme', shop3s:'Emerald and northern lights',
+  shop4t:'Online season', shop4s:'Ranking, leagues, rewards', shopSoon:'soon',
+  shopClose:'Close',
+  youName:'You', oppName:'Opponent', computerName:'Computer', blueName:'Blue', pinkName:'Pink',
+  youBlue:'You · blue', youPink:'You · pink',
+  statusOver:'Game over', statusThinking:'Computer is thinking…',
+  statusYourTurn:'Your turn', statusOppTurn:'Opponent\'s turn', statusCompTurn:'Computer\'s turn',
+  statusBlueTurn:'Blue\'s turn', statusPinkTurn:'Pink\'s turn',
+  cantPlaceHere:"Can't place here — crystal too small",
+  skipTurn:'{0} has no legal moves — turn skipped', skipBlue:'Blue', skipPink:'Pink',
+  youWon:'You won!', oppWon:'Opponent won', compWon:'Computer won',
+  blueWon:'Blue won!', pinkWon:'Pink won!', draw:'Draw',
+  timeUp:'Time ran out. ', scoreLine:'Series score {0} : {1}', crystalsOut:'Out of crystals. ',
+  oppDisconnected:'Opponent disconnected', hostLeft:'Room host left',
+  roomCreateFail:'Could not create room: {0}', code4letters:'The code is 4 letters',
+  roomNotFound:'Room not found', roomFull:'Room already has two players', connectFail:'Connection error: {0}',
+  duelStarted:'Opponent connected — the duel begins!',
+  nickTooShort:'Nickname must be at least 2 characters',
+  ratingLine:'{0} → rating {1}',
+  matchStartedWith:'Duel started! Opponent: {0}',
+  roomVanished:'Room vanished — searching again',
+  firebaseKeysMissing:'First insert your Firebase keys into the code (see STEP 1 comment)',
+  firebaseErr:'Firebase error: {0}', genericErr:'Error: {0}',
+  topLoadFail:'Could not load leaderboard: {0}',
+  adNotWatched:'Video not completed — no reward given',
+  hintOnlyOnTurn:'Hint is available on your turn', hintShown:'Best move highlighted',
+  soundOn:'Sound and vibration on', soundOff:'Sound off',
+  codeCopied:'Code copied', codeIs:'Code: {0}',
+}
+};
+let lang = store.getItem('prisma_lang') || ((navigator.language||'').toLowerCase().startsWith('ru') ? 'ru' : 'en');
+function t(key, ...args){
+  let s = (I18N[lang]&&I18N[lang][key]) ?? (I18N.ru[key]) ?? key;
+  args.forEach((a,i)=>{ s = s.replace('{'+i+'}', a); });
+  return s;
+}
+function applyLang(){
+  document.documentElement.lang = lang;
+  const textMap = ['logoSub','seriesLabel','menuBtn','rulesBtn','vsAiBtn','diffNovice','diffMaster','diffGM',
+    'vsHumanBtn','createRoomBtn','joinRoomBtn','topBtn','waitTitle','waitDesc','copyCodeBtn','cancelRoomBtn',
+    'joinTitle','joinDesc','joinGoBtn','joinCancelBtn','searchTitle','cancelSearchBtn','nickTitle','nickDesc',
+    'nickGoBtn','nickCancelBtn','topTitle','topClose','rulesTitle','rulesClose','adTitle','adDesc',
+    'shopTitle','shopDesc','shopClose','menuTitle','menuTagline','waitText'];
+  const endTitleEl=$('endTitle'); if(endTitleEl)endTitleEl.textContent=t('endTitleDefault');
+  textMap.forEach(id=>{const el=$(id);if(el)el.textContent=t(id);});
+  const hintEl=$('hintBtn'); if(hintEl)hintEl.textContent='▶ '+t('hintBtn').replace('▶ ','');
+  const shopEl=$('shopBtn'); if(shopEl)shopEl.textContent='◆ '+t('shopBtn').replace('◆ ','');
+  const findEl=$('findMatchBtn'); if(findEl)findEl.textContent='⚔ '+t('findMatchBtn').replace('⚔ ','');
+  const rulesBodyEl=$('rulesBody'); if(rulesBodyEl)rulesBodyEl.innerHTML=t('rulesBody');
+  const nickInputEl=$('nickInput'); if(nickInputEl)nickInputEl.placeholder=t('nickPlaceholder');
+  const shopItemsEl=$('shopItems');
+  if(shopItemsEl)shopItemsEl.innerHTML=
+    '<div class="shop-item"><div><b>'+t('shop1t')+'</b><span>'+t('shop1s')+'</span></div><div class="price">$2.99</div></div>'+
+    '<div class="shop-item"><div><b>'+t('shop2t')+'</b><span>'+t('shop2s')+'</span></div><div class="price">$4.99/mo</div></div>'+
+    '<div class="shop-item"><div><b>'+t('shop3t')+'</b><span>'+t('shop3s')+'</span></div><div class="price">$1.99</div></div>'+
+    '<div class="shop-item"><div><b>'+t('shop4t')+'</b><span>'+t('shop4s')+'</span></div><div class="price">'+t('shopSoon')+'</div></div>';
+  const langBtn=$('langBtn'); if(langBtn)langBtn.textContent = lang==='ru' ? 'EN' : 'RU';
+  // элементы с динамическим содержимым, которые надо пересчитать в реальном времени
+  if(typeof render==='function')render();
+  if(typeof updateMenuSub==='function')updateMenuSub();
+}
+function setLang(newLang){
+  lang=newLang;store.setItem('prisma_lang',lang);applyLang();
+}
 const LINES=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
 
 const $=id=>document.getElementById(id);
@@ -427,7 +583,7 @@ let db=null, fbReady=false;
 function initFirebase(){
   if(fbReady)return true;
   if(FIREBASE_CONFIG.apiKey.startsWith('ВСТАВЬТЕ')){
-    toast('Сначала вставьте ключи Firebase в код (см. комментарий ШАГ 1)');
+    toast(t('firebaseKeysMissing'));
     return false;
   }
   try{
@@ -435,7 +591,7 @@ function initFirebase(){
     db=firebase.database();
     fbReady=true;
     return true;
-  }catch(e){toast('Ошибка Firebase: '+e.message);return false;}
+  }catch(e){toast(t('firebaseErr',e.message));return false;}
 }
 
 /* ---------- ambient ---------- */
@@ -491,11 +647,11 @@ function render(){
     c.classList.toggle('legal',!over&&selected!==null&&canAct(turn)&&legal(i,selected));
   });
   const st=$('status');st.className='status t'+(turn+1)+(thinking?' think':'');
-  $('statusText').textContent = over ? 'Игра окончена'
-    : thinking ? 'Компьютер думает…'
-    : online ? (turn===mySeat?'Ваш ход':'Ход соперника')
-    : vsAI ? (turn===0?'Ваш ход':'Ход компьютера')
-    : (turn===0?'Ход синих':'Ход розовых');
+  $('statusText').textContent = over ? t('statusOver')
+    : thinking ? t('statusThinking')
+    : online ? (turn===mySeat?t('statusYourTurn'):t('statusOppTurn'))
+    : vsAI ? (turn===0?t('statusYourTurn'):t('statusCompTurn'))
+    : (turn===0?t('statusBlueTurn'):t('statusPinkTurn'));
 }
 function canAct(p){
   if(over)return false;
@@ -514,7 +670,7 @@ function onSlot(p,s){
 }
 function onCell(i){
   if(!canAct(turn)||selected===null)return;
-  if(!legal(i,selected)){toast('Сюда нельзя — кристалл слишком мал');return;}
+  if(!legal(i,selected)){toast(t('cantPlaceHere'));return;}
   makeMove(i,selected);
 }
 function makeMove(i,s){
@@ -528,7 +684,7 @@ function makeMove(i,s){
   turn=1-turn;
   if(!hasMoves(turn)){
     if(!hasMoves(1-turn)){finish(null);pushState(null,true);return;}
-    toast((turn===0?'Синим':'Розовым')+' некуда ходить — пропуск');
+    toast(t('skipTurn', turn===0?t('skipBlue'):t('skipPink')));
     turn=1-turn;
   }
   render();
@@ -558,19 +714,19 @@ function finish(win){
     wins[win.p]++;$('w1').textContent=wins[0];$('w2').textContent=wins[1];
     (win.line||[]).forEach(i=>spawnShards(i,win.p));
     let name;
-    if(online)name = win.p===mySeat ? 'Вы победили!' : 'Соперник победил';
-    else if(vsAI)name = win.p===0?'Вы победили!':'Компьютер победил';
-    else name = win.p===0?'Синие победили!':'Розовые победили!';
+    if(online)name = win.p===mySeat ? t('youWon') : t('oppWon');
+    else if(vsAI)name = win.p===0?t('youWon'):t('compWon');
+    else name = win.p===0?t('blueWon'):t('pinkWon');
     $('endWinner').textContent=name;
     $('endWinner').style.color=win.p===0?'var(--p1)':'var(--p2)';
-    $('endNote').textContent=(win.timeout?'Время на ход истекло. ':'')+'Счёт серии '+wins[0]+' : '+wins[1];
+    $('endNote').textContent=(win.timeout?t('timeUp'):'')+t('scoreLine',wins[0],wins[1]);
   } else {
-    $('endWinner').textContent='Ничья';
+    $('endWinner').textContent=t('draw');
     $('endWinner').style.color='var(--ink-dim)';
-    $('endNote').textContent='Кристаллы закончились. Счёт серии '+wins[0]+' : '+wins[1];
+    $('endNote').textContent=t('crystalsOut')+t('scoreLine',wins[0],wins[1]);
   }
   applyRanked(win?win.p:null);
-  $('rematchBtn').textContent=(online&&ranked)?'Найти нового соперника':'Реванш';
+  $('rematchBtn').textContent=(online&&ranked)?t('rematchRanked'):t('rematchDefault');
   render();
   setTimeout(()=>$('endOverlay').classList.add('on'),900);
 }
@@ -693,7 +849,7 @@ function startTurnClock(){
     const left=TURN_MS-(Date.now()-turnStart);
     const s=Math.max(0,Math.ceil(left/1000));
     const c=$('turnClock');
-    c.textContent='· '+s+' с';
+    c.textContent='· '+s+(lang==='ru'?' с':'s');
     c.classList.toggle('low',s<=10);
     if(s!==lastTick){lastTick=s;if(s<=5&&s>0&&turn===mySeat){sfx.tick();buzz(15);}}
     if(left<=0&&turn===mySeat){
@@ -749,15 +905,15 @@ function applyState(s){
     if(s.win){
       (s.win.line||[]).forEach(i=>boardEl.children[i].classList.add('win'));
       (s.win.line||[]).forEach(i=>spawnShards(i,s.win.p));
-      $('endWinner').textContent = s.win.p===mySeat?'Вы победили!':'Соперник победил';
+      $('endWinner').textContent = s.win.p===mySeat?t('youWon'):t('oppWon');
       $('endWinner').style.color=s.win.p===0?'var(--p1)':'var(--p2)';
     } else {
-      $('endWinner').textContent='Ничья';
+      $('endWinner').textContent=t('draw');
       $('endWinner').style.color='var(--ink-dim)';
     }
-    $('endNote').textContent=(s.win&&s.win.timeout?'Время на ход истекло. ':'')+'Счёт серии '+wins[0]+' : '+wins[1];
+    $('endNote').textContent=(s.win&&s.win.timeout?t('timeUp'):'')+t('scoreLine',wins[0],wins[1]);
     applyRanked(s.win?s.win.p:null);
-    $('rematchBtn').textContent=(online&&ranked)?'Найти нового соперника':'Реванш';
+    $('rematchBtn').textContent=(online&&ranked)?t('rematchRanked'):t('rematchDefault');
     render();
     setTimeout(()=>$('endOverlay').classList.add('on'),900);
   } else {
@@ -797,8 +953,8 @@ function attachStateListener(){
   });
   playersListener=roomRef.child('players').on('value',snap=>{
     const p=snap.val()||{};
-    if(online && mySeat===0 && !p.guest && gameStarted)toast('Соперник отключился');
-    if(online && mySeat===1 && !p.host)toast('Создатель комнаты вышел');
+    if(online && mySeat===0 && !p.guest && gameStarted)toast(t('oppDisconnected'));
+    if(online && mySeat===1 && !p.host)toast(t('hostLeft'));
   });
 }
 let gameStarted=false;
@@ -831,17 +987,17 @@ function createRoom(){
         startOnline();
       }
     });
-  }).catch(e=>toast('Не удалось создать комнату: '+e.message));
+  }).catch(e=>toast(t('roomCreateFail',e.message)));
 }
 function joinRoom(code){
   if(!initFirebase())return;
   code=code.toUpperCase().trim();
-  if(code.length!==4){toast('Код — это 4 буквы');return;}
+  if(code.length!==4){toast(t('code4letters'));return;}
   const ref=db.ref('rooms/'+code);
   ref.get().then(snap=>{
-    if(!snap.exists()){toast('Комната не найдена');return;}
+    if(!snap.exists()){toast(t('roomNotFound'));return;}
     const room=snap.val();
-    if(room.players&&room.players.guest){toast('В комнате уже двое');return;}
+    if(room.players&&room.players.guest){toast(t('roomFull'));return;}
     roomCode=code;roomRef=ref;mySeat=1;
     const st=room.state;
     wins=JSON.parse(st.wins);roundId=st.roundId;
@@ -851,7 +1007,7 @@ function joinRoom(code){
       startOnline();
       applyStateInitial(st);
     });
-  }).catch(e=>toast('Ошибка подключения: '+e.message));
+  }).catch(e=>toast(t('connectFail',e.message)));
 }
 function applyStateInitial(s){
   stacks=JSON.parse(s.stacks);reserve=JSON.parse(s.reserve);
@@ -861,8 +1017,8 @@ function applyStateInitial(s){
 }
 function startOnline(){
   online=true;vsAI=false;gameStarted=true;
-  $('name1').textContent = mySeat===0?'Вы · синие':'Соперник';
-  $('name2').textContent = mySeat===0?'Соперник':'Вы · розовые';
+  $('name1').textContent = mySeat===0?t('youBlue'):t('oppName');
+  $('name2').textContent = mySeat===0?t('oppName'):t('youPink');
   $('waitOverlay').classList.remove('on');
   $('menuOverlay').classList.remove('on');
   attachStateListener();
@@ -871,15 +1027,14 @@ function startOnline(){
     turn=0;over=false;selected=null;
     render();
   }
-  toast('Соперник подключился — дуэль началась!');
+  toast(t('duelStarted'));
   $('rulesOverlay').classList.add('on');
 }
 
 /* ---------- РЕЙТИНГ И ПОИСК СОПЕРНИКА ---------- */
 function updateMenuSub(){
   const r=store.getItem('prisma_rating')||myRating||1000;
-  $('menuSub').textContent = nick ? ('Ник: '+nick+' · рейтинг '+r)
-    : 'Сыграйте рейтинговую дуэль и попадите в топ';
+  $('menuSub').textContent = nick ? t('menuSubNamed', nick, r) : t('menuSubGuest');
 }
 function loadPlayer(cb){
   db.ref('players/'+uid).get().then(s=>{
@@ -914,7 +1069,7 @@ function startSearch(){
     $('menuOverlay').classList.remove('on');
     $('nickOverlay').classList.remove('on');
     $('searchOverlay').classList.add('on');
-    $('searchSub').textContent='Ваш рейтинг: '+myRating;
+    $('searchSub').textContent=t('searchSub',myRating);
     searching=true;
     tryMatch();
   });
@@ -960,7 +1115,7 @@ function claimCandidate(k){
         setTimeout(tryMatch,400+Math.random()*400);
       }
     });
-  }).catch(e=>{toast('Ошибка: '+e.message);setTimeout(tryMatch,800);});
+  }).catch(e=>{toast(t('genericErr',e.message));setTimeout(tryMatch,800);});
 }
 function enqueueSelf(){
   if(!searching||queueRef)return;
@@ -1011,7 +1166,7 @@ function adoptRankedRoom(code){
   wins=[0,0];roundId=1;
   $('w1').textContent=0;$('w2').textContent=0;
   roomRef.child('players/host').onDisconnect().remove();
-  $('searchText').textContent='Соперник найден, подключаем';
+  $('searchText').textContent=t('searchFoundConnecting');
   roomRef.child('meta/guest').on('value',snap=>{
     const g=snap.val();
     if(g){roomRef.child('meta/guest').off();oppInfo=g;beginRanked();}
@@ -1026,7 +1181,7 @@ function joinRankedRoom(code,attempt){
         setTimeout(()=>{if(searching)joinRankedRoom(code,attempt+1);},500);
         return;
       }
-      toast('Комната исчезла — ищем дальше');
+      toast(t('roomVanished'));
       roomRef=null;roomCode=null;
       tryMatch();return;
     }
@@ -1038,7 +1193,7 @@ function joinRankedRoom(code,attempt){
     roomRef.child('meta/guest').set({uid,name:nick,rating:myRating});
     beginRanked();
     applyStateInitial(room.state);
-  }).catch(e=>{toast('Ошибка подключения: '+e.message);stopSearch();$('menuOverlay').classList.add('on');});
+  }).catch(e=>{toast(t('connectFail',e.message));stopSearch();$('menuOverlay').classList.add('on');});
 }
 function beginRanked(){
   ranked=true;ratingApplied=false;
@@ -1046,8 +1201,8 @@ function beginRanked(){
   searching=false;clearQueue();
   $('searchOverlay').classList.remove('on');
   online=true;vsAI=false;gameStarted=true;
-  const oppName=((oppInfo&&oppInfo.name)||'Соперник')+' · '+matchStartRatings.opp;
-  const meName=(nick||'Вы')+' · '+matchStartRatings.me;
+  const oppName=((oppInfo&&oppInfo.name)||t('oppName'))+' · '+matchStartRatings.opp;
+  const meName=(nick||t('youName'))+' · '+matchStartRatings.me;
   $('name1').textContent = mySeat===0?meName:oppName;
   $('name2').textContent = mySeat===0?oppName:meName;
   attachStateListener();
@@ -1056,7 +1211,7 @@ function beginRanked(){
     turn=0;over=false;selected=null;render();
   }
   sfx.match();
-  toast('Дуэль началась! Соперник: '+((oppInfo&&oppInfo.name)||'Аноним'));
+  toast(t('matchStartedWith',(oppInfo&&oppInfo.name)||t('anon')));
 }
 function applyRanked(winP){
   if(!(online&&ranked)){$('ratingDelta').textContent='';return;}
@@ -1074,7 +1229,7 @@ function applyRanked(winP){
       wins:res===1?firebase.database.ServerValue.increment(1):firebase.database.ServerValue.increment(0)
     });
   }catch(e){}
-  $('ratingDelta').textContent=(delta>=0?'+':'')+delta+' → рейтинг '+myRating;
+  $('ratingDelta').textContent=t('ratingLine',(delta>=0?'+':'')+delta,myRating);
   $('ratingDelta').style.color=delta>=0?'var(--p1)':'var(--p2)';
   updateMenuSub();
 }
@@ -1083,7 +1238,7 @@ $('findMatchBtn').addEventListener('click',startSearch);
 $('cancelSearchBtn').addEventListener('click',()=>{stopSearch();$('menuOverlay').classList.add('on');});
 $('nickGoBtn').addEventListener('click',()=>{
   const v=$('nickInput').value.trim().slice(0,14);
-  if(v.length<2){toast('Ник — минимум 2 символа');return;}
+  if(v.length<2){toast(t('nickTooShort'));return;}
   nick=v;store.setItem('prisma_nick',nick);
   updateMenuSub();
   startSearch();
@@ -1099,20 +1254,20 @@ $('topBtn').addEventListener('click',()=>{
     if(!arr.length){
       const p=document.createElement('p');
       p.style.textAlign='center';p.style.color='var(--ink-dim)';p.style.fontSize='13px';
-      p.textContent='Пока пусто — сыграйте рейтинговую дуэль первым!';
+      p.textContent=t('topEmpty');
       el.appendChild(p);
     }
     arr.forEach((pl,i)=>{
       const row=document.createElement('div');
       row.className='top-row'+(pl.id===uid?' me':'');
       const pos=document.createElement('span');pos.className='pos';pos.textContent=(i+1);
-      const nm=document.createElement('span');nm.className='nm';nm.textContent=pl.name||'Аноним';
+      const nm=document.createElement('span');nm.className='nm';nm.textContent=pl.name||t('anon');
       const rt=document.createElement('span');rt.className='rt';rt.textContent=pl.rating||1000;
       row.append(pos,nm,rt);
       el.appendChild(row);
     });
     $('topOverlay').classList.add('on');
-  }).catch(e=>toast('Не удалось загрузить топ: '+e.message));
+  }).catch(e=>toast(t('topLoadFail',e.message)));
 });
 $('topClose').addEventListener('click',()=>$('topOverlay').classList.remove('on'));
 
@@ -1153,7 +1308,7 @@ function playAd(cb){
   const finish=ok=>{
     if(done)return;done=true;cleanup();
     if(ok)cb&&cb();
-    else toast('Ролик не досмотрен — награда не получена');
+    else toast(t('adNotWatched'));
   };
   try{
     listeners.push(A.addListener('onRewardedVideoAdReward',()=>{rewarded=true;}));
@@ -1167,14 +1322,14 @@ function playAd(cb){
   }catch(e){done=true;cleanup();playAdMock(cb);}
 }
 $('hintBtn').addEventListener('click',()=>{
-  if(!canAct(turn)){toast('Подсказка доступна на вашем ходу');return;}
+  if(!canAct(turn)){toast(t('hintOnlyOnTurn'));return;}
   playAd(()=>{
     const m=bestMove(turn,3);
     if(!m)return;
     selected=m.s;render();
     const cell=boardEl.children[m.i];
     cell.animate([{boxShadow:'inset 0 0 0 3px #ffc24d'},{boxShadow:'inset 0 0 0 0 transparent'}],{duration:1600});
-    toast('Лучший ход подсвечен');
+    toast(t('hintShown'));
   });
 });
 $('shopBtn').addEventListener('click',()=>$('shopOverlay').classList.add('on'));
@@ -1182,8 +1337,9 @@ $('shopClose').addEventListener('click',()=>$('shopOverlay').classList.remove('o
 function syncSoundBtn(){$('soundBtn').textContent=sndOn?'🔊':'🔇';}
 $('soundBtn').addEventListener('click',()=>{
   sndOn=!sndOn;store.setItem('prisma_sound',sndOn?'1':'0');syncSoundBtn();
+$('langBtn').addEventListener('click',()=>{setLang(lang==='ru'?'en':'ru');});
   if(sndOn)sfx.select();
-  toast(sndOn?'Звук и вибрация включены':'Звук выключен');
+  toast(sndOn?t('soundOn'):t('soundOff'));
 });
 syncSoundBtn();
 
@@ -1207,7 +1363,7 @@ function freshStateObj0(){
 }
 $('vsAiBtn').addEventListener('click',()=>{
   detachRoom();gameStarted=false;
-  vsAI=true;$('name1').textContent='Вы';$('name2').textContent='Компьютер';
+  vsAI=true;$('name1').textContent=t('youName');$('name2').textContent=t('computerName');
   wins=[0,0];$('w1').textContent=0;$('w2').textContent=0;roundId=0;
   $('menuOverlay').classList.remove('on');
   $('rulesOverlay').classList.add('on');
@@ -1220,7 +1376,7 @@ document.querySelectorAll('#diffRow button').forEach(b=>{
 });
 $('vsHumanBtn').addEventListener('click',()=>{
   detachRoom();gameStarted=false;
-  vsAI=false;$('name1').textContent='Синие';$('name2').textContent='Розовые';
+  vsAI=false;$('name1').textContent=t('blueName');$('name2').textContent=t('pinkName');
   wins=[0,0];$('w1').textContent=0;$('w2').textContent=0;roundId=0;
   $('menuOverlay').classList.remove('on');
   $('rulesOverlay').classList.add('on');
@@ -1236,7 +1392,7 @@ $('joinGoBtn').addEventListener('click',()=>joinRoom($('codeInput').value));
 $('codeInput').addEventListener('keydown',e=>{if(e.key==='Enter')joinRoom($('codeInput').value);});
 $('joinCancelBtn').addEventListener('click',()=>{$('joinOverlay').classList.remove('on');$('menuOverlay').classList.add('on');});
 $('copyCodeBtn').addEventListener('click',()=>{
-  navigator.clipboard&&navigator.clipboard.writeText(roomCode).then(()=>toast('Код скопирован'),()=>toast('Код: '+roomCode));
+  navigator.clipboard&&navigator.clipboard.writeText(roomCode).then(()=>toast(t('codeCopied')),()=>toast(t('codeIs',roomCode)));
 });
 $('cancelRoomBtn').addEventListener('click',()=>{
   if(roomRef)roomRef.remove().catch(()=>{});
@@ -1267,8 +1423,9 @@ $('menuBtn').addEventListener('click',()=>{updateMenuSub();$('menuOverlay').clas
 window.addEventListener('beforeunload',()=>{clearQueue();detachRoom();});
 
 /* старт */
-stacks=Array.from({length:9},()=>[]);reserve=[[2,2,2,2,2],[2,2,2,2,2]];render();
-updateMenuSub();
+stacks=Array.from({length:9},()=>[]);reserve=[[2,2,2,2,2],[2,2,2,2,2]];
+$('name1').textContent=t('youName');$('name2').textContent=t('oppName');
+applyLang();
 })();
 </script>
 </body>
